@@ -6,6 +6,8 @@ require_relative "shield_ast/runner"
 module ShieldAst
   class Error < StandardError; end
 
+  # Main class for the Shield AST command-line tool.
+  # Handles command-line argument parsing and delegates to the Runner.
   class Main
     def self.call(args)
       options = parse_args(args)

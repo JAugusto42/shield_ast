@@ -9,7 +9,9 @@ Gem::Specification.new do |spec|
   spec.email = ["joseaugusto.881@outlook.com"]
 
   spec.summary = "A command-line tool for multi-scanner Application Security Testing."
-  spec.description = "Shield AST is an all-in-one command-line tool that automates security testing by integrating popular open-source scanners for SAST, SCA, and IaC, helping you find and fix vulnerabilities early in the development lifecycle."
+  spec.description = "Shield AST is an all-in-one command-line tool that automates security testing by integrating
+                      popular open-source scanners for SAST, SCA, and IaC, helping you find and fix vulnerabilities
+                      early in the development lifecycle."
   spec.homepage = "https://github.com/JAugusto42/shield_ast"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"

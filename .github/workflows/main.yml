@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-
   pull_request:
 
 jobs:
@@ -17,7 +16,8 @@ jobs:
           - '3.4.5'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Set up Ruby
@@ -25,5 +25,5 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - name: Run the default task
-        run: bundle exec rake
+      - name: Run RSpec tests
+        run: bundle exec rspec
