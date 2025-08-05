@@ -1,23 +1,24 @@
-# frozen_string_literal: true
-
+# lib/shield_ast/sast.rb
 require "json"
+require "open3"
 
 module ShieldAst
+  # Runs SAST analysis using Semgrep.
   class SAST
     def self.scan(path)
       puts "Running SAST scan on: #{path}"
-      puts "Executing Semgrep with public rules..."
+      cmd = ["semgrep", "scan", path, "--json", "--disable-version-check"]
+      stdout, stderr, status = Open3.capture3(*cmd)
 
-      vulnerabilities = [
-        {
-          "check_id": "ruby.lang.security.injection.command.command-injection",
-          "severity": "HIGH",
-          "message": "Potential command injection vulnerability found.",
-          "path": "app/controllers/users_controller.rb",
-          "line": 15
-        }
-      ]
-      JSON.generate(vulnerabilities)
+      if status.success?
+        JSON.parse(stdout)
+      else
+        warn "Semgrep SAST scan failed! Error: #{stderr}"
+        []
+      end
+    rescue JSON::ParserError => e
+      warn "Failed to parse Semgrep output: #{e.message}"
+      []
     end
   end
 end

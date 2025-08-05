@@ -27,11 +27,6 @@ module ShieldAst
         puts "IaC analysis finished."
       end
 
-      reports.each do |type, report|
-        puts "\n--- #{type.to_s.upcase} Report ---"
-        puts report
-      end
-
       reports
     end
   end

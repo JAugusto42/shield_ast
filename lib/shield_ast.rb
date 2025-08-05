@@ -2,7 +2,9 @@
 
 require_relative "shield_ast/version"
 require_relative "shield_ast/runner"
+require 'json' # Necessário para o parser do JSON do Semgrep
 
+# Main module for the Shield AST gem.
 module ShieldAst
   class Error < StandardError; end
 
@@ -11,30 +13,17 @@ module ShieldAst
   class Main
     def self.call(args)
       options = parse_args(args)
+      handle_options(options)
+    end
 
+    private_class_method def self.handle_options(options)
       if options[:help]
         show_help
-        return
-      end
-
-      if options[:version]
+      elsif options[:version]
         puts "Shield AST version #{ShieldAst::VERSION}"
-        return
-      end
-
-      command = options[:command]
-
-      if command == "scan"
-        path = options[:path] || Dir.pwd
-
-        if !options[:sast] && !options[:sca] && !options[:iac]
-          options[:sast] = true
-          options[:sca] = true
-          options[:iac] = true
-        end
-
-        Runner.run(options, path)
-      elsif command == "report"
+      elsif options[:command] == "scan"
+        run_scan(options)
+      elsif options[:command] == "report"
         puts "Generating report... (not yet implemented)"
       else
         puts "Invalid command. Use 'ast help' for more information."
@@ -42,14 +31,64 @@ module ShieldAst
       end
     end
 
-    def self.parse_args(args)
-      options = {
-        sast: false,
-        sca: false,
-        iac: false,
-        help: false,
-        version: false
-      }
+    private_class_method def self.run_scan(options)
+      path = options[:path] || Dir.pwd
+      options = apply_default_scanners(options)
+
+      puts "\n-> Starting scan..."
+      reports = Runner.run(options, path)
+      puts "Scan finished."
+
+      display_reports(reports)
+    end
+
+    private_class_method def self.apply_default_scanners(options)
+      options.tap do |o|
+        if !o[:sast] && !o[:sca] && !o[:iac]
+          o[:sast] = true
+          o[:sca] = true
+          o[:iac] = true
+        end
+      end
+    end
+
+    private_class_method def self.display_reports(reports)
+      reports.each do |type, report_data|
+        puts "\n--- #{type.to_s.upcase} Report ---"
+
+        if report_data["results"] && !report_data["results"].empty?
+          format_report(report_data["results"])
+        else
+          puts "No vulnerabilities found for #{type.to_s.upcase}."
+        end
+      end
+    end
+
+    private_class_method def self.format_report(results)
+      results.each do |result|
+        title = result["extra"]["message"].split('.')[0].strip
+        description = result["extra"]["message"].gsub("\n", ' ').strip
+        severity = result["extra"]["severity"]
+        file = result["path"]
+        line = result["start"]["line"]
+
+        puts "  - Título: #{title}"
+        puts "  - Severidade: #{severity}"
+        puts "  - Arquivo: #{file}:#{line}"
+        puts "  - Descrição: #{description}"
+        puts "  - Informações adicionais:"
+        puts "    - Categoria: #{result['extra']['metadata']['category']}"
+        puts "    - OWASP: #{result['extra']['metadata']['owasp']&.join(', ')}"
+        puts "    - Referências: #{result['extra']['metadata']['references']&.join(', ')}"
+        puts "    - Confidence: #{result['extra']['metadata']['confidence']}"
+        puts "    - Impact: #{result['extra']['metadata']['impact']}"
+        puts "\n"
+      end
+    end
+
+    # Parses command-line arguments to build an options hash.
+    private_class_method def self.parse_args(args)
+      options = { command: nil, path: nil, sast: false, sca: false, iac: false, help: false, version: false }
 
       args.each do |arg|
         case arg
@@ -60,14 +99,14 @@ module ShieldAst
         when "-i", "--iac" then options[:iac] = true
         when "-h", "--help" then options[:help] = true
         when "--version" then options[:version] = true
-        else
-          options[:path] = arg if options[:command] == "scan" && options[:path].nil?
+        when /^[^-]/ then options[:path] = arg if options[:command] == "scan" && options[:path].nil?
         end
       end
       options
     end
 
-    def self.show_help
+    # Displays the help message for the CLI tool.
+    private_class_method def self.show_help
       puts <<~HELP
         ast - A powerful command-line tool for Application Security Testing
 
