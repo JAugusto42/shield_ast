@@ -2,7 +2,7 @@
 
 require_relative "shield_ast/version"
 require_relative "shield_ast/runner"
-require 'json' # Necessário para o parser do JSON do Semgrep
+require "json"
 
 # Main module for the Shield AST gem.
 module ShieldAst
@@ -66,22 +66,22 @@ module ShieldAst
 
     private_class_method def self.format_report(results)
       results.each do |result|
-        title = result["extra"]["message"].split('.')[0].strip
-        description = result["extra"]["message"].gsub("\n", ' ').strip
+        title = result["extra"]["message"].split(".")[0].strip
+        description = result["extra"]["message"].gsub("\n", " ").strip
         severity = result["extra"]["severity"]
         file = result["path"]
         line = result["start"]["line"]
 
-        puts "  - Título: #{title}"
-        puts "  - Severidade: #{severity}"
-        puts "  - Arquivo: #{file}:#{line}"
-        puts "  - Descrição: #{description}"
-        puts "  - Informações adicionais:"
-        puts "    - Categoria: #{result['extra']['metadata']['category']}"
-        puts "    - OWASP: #{result['extra']['metadata']['owasp']&.join(', ')}"
-        puts "    - Referências: #{result['extra']['metadata']['references']&.join(', ')}"
-        puts "    - Confidence: #{result['extra']['metadata']['confidence']}"
-        puts "    - Impact: #{result['extra']['metadata']['impact']}"
+        puts "  - Title: #{title}"
+        puts "  - Severity: #{severity}"
+        puts "  - File: #{file}:#{line}"
+        puts "  - Description: #{description}"
+        puts "  - Infos:"
+        puts "    - Category: #{result["extra"]["metadata"]["category"]}"
+        puts "    - OWASP: #{result["extra"]["metadata"]["owasp"]&.join(", ")}"
+        puts "    - Reference: #{result["extra"]["metadata"]["references"]&.join(", ")}"
+        puts "    - Confidence: #{result["extra"]["metadata"]["confidence"]}"
+        puts "    - Impact: #{result["extra"]["metadata"]["impact"]}"
         puts "\n"
       end
     end

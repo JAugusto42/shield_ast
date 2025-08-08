@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # lib/shield_ast/sast.rb
 require "json"
 require "open3"
