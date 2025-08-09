@@ -2,6 +2,7 @@
 
 require_relative "shield_ast/version"
 require_relative "shield_ast/runner"
+
 require "json"
 
 # Main module for the Shield AST gem.
@@ -36,10 +37,16 @@ module ShieldAst
       options = apply_default_scanners(options)
 
       puts "\n-> Starting scan..."
+      start_time = Time.now
+
       reports = Runner.run(options, path)
+
+      end_time = Time.now
+      execution_time = end_time - start_time
+
       puts "Scan finished."
 
-      display_reports(reports)
+      display_reports(reports, execution_time)
     end
 
     private_class_method def self.apply_default_scanners(options)
@@ -52,38 +59,124 @@ module ShieldAst
       end
     end
 
-    private_class_method def self.display_reports(reports)
-      reports.each do |type, report_data|
-        puts "\n--- #{type.to_s.upcase} Report ---"
+    private_class_method def self.display_reports(reports, execution_time)
+      total_issues = 0
 
-        if report_data["results"] && !report_data["results"].empty?
-          format_report(report_data["results"])
-        else
-          puts "No vulnerabilities found for #{type.to_s.upcase}."
-        end
+      reports.each do |type, report_data|
+        results = report_data["results"] || []
+        total_issues += results.length
+
+        next if results.empty?
+
+        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"})"
+        puts "-" * 60
+
+        format_report(results, type)
+      end
+
+      puts "\n⏱️  Execution time: #{format_duration(execution_time)}"
+
+      if total_issues.zero?
+        puts "✅ No security issues found! Your code looks clean."
+      else
+        severity_summary = calculate_severity_summary(reports)
+        puts "📊 Summary: #{total_issues} total issues #{severity_summary}"
       end
     end
 
-    private_class_method def self.format_report(results)
-      results.each do |result|
-        title = result["extra"]["message"].split(".")[0].strip
-        description = result["extra"]["message"].gsub("\n", " ").strip
-        severity = result["extra"]["severity"]
-        file = result["path"]
-        line = result["start"]["line"]
-
-        puts "  - Title: #{title}"
-        puts "  - Severity: #{severity}"
-        puts "  - File: #{file}:#{line}"
-        puts "  - Description: #{description}"
-        puts "  - Infos:"
-        puts "    - Category: #{result["extra"]["metadata"]["category"]}"
-        puts "    - OWASP: #{result["extra"]["metadata"]["owasp"]&.join(", ")}"
-        puts "    - Reference: #{result["extra"]["metadata"]["references"]&.join(", ")}"
-        puts "    - Confidence: #{result["extra"]["metadata"]["confidence"]}"
-        puts "    - Impact: #{result["extra"]["metadata"]["impact"]}"
-        puts "\n"
+    private_class_method def self.format_report(results, scan_type)
+      results.each_with_index do |result, index|
+        if scan_type == :sca && has_sca_format?(result)
+          format_sca_result(result)
+        else
+          format_default_result(result)
+        end
+        puts "" if index < results.length - 1 # Add spacing between items, but not after last
       end
+    end
+
+    # Helper methods for better formatting
+    private_class_method def self.get_severity_icon(severity)
+      case severity&.upcase
+      when "ERROR" then "🔴"
+      when "WARNING" then "🟡"
+      when "INFO" then "🔵"
+      else "⚪"
+      end
+    end
+
+    private_class_method def self.get_scan_icon(scan_type)
+      case scan_type
+      when :sast then "🔍"
+      when :sca then "📦"
+      when :iac then "☁️"
+      else "🛡️"
+      end
+    end
+
+    private_class_method def self.extract_short_description(result)
+      description = result["extra"]["message"].gsub("\n", " ").strip
+      if description.length > 80
+        "#{description[0..80]}..."
+      else
+        description
+      end
+    end
+
+    private_class_method def self.calculate_severity_summary(reports)
+      error_count = 0
+      warning_count = 0
+      info_count = 0
+
+      reports.each_value do |report_data|
+        (report_data["results"] || []).each do |result|
+          severity = result["severity"] || result.dig("extra", "severity")
+          case severity&.upcase
+          when "ERROR" then error_count += 1
+          when "WARNING" then warning_count += 1
+          when "INFO" then info_count += 1
+          end
+        end
+      end
+
+      parts = []
+      parts << "#{error_count} 🔴" if error_count.positive?
+      parts << "#{warning_count} 🟡" if warning_count.positive?
+      parts << "#{info_count} 🔵" if info_count.positive?
+
+      "(#{parts.join(", ")})"
+    end
+
+    private_class_method def self.format_duration(seconds)
+      if seconds < 1
+        "#{(seconds * 1000).round}ms"
+      elsif seconds < 60
+        "#{seconds.round(1)}s"
+      else
+        minutes = (seconds / 60).floor
+        remaining_seconds = (seconds % 60).round
+        "#{minutes}m #{remaining_seconds}s"
+      end
+    end
+
+    private_class_method def self.has_sca_format?(result)
+      result.key?("title") && result.key?("description") &&
+      result.key?("vulnerable_version") && result.key?("fixed_version")
+    end
+
+    private_class_method def self.format_sca_result(result)
+      severity_icon = get_severity_icon(result['severity'])
+      puts "  #{severity_icon} #{result["title"]} (#{result["vulnerable_version"]} → #{result["fixed_version"]})"
+      puts "     📁 #{result["file"]} | #{result["description"][0..80]}#{result["description"].length > 80 ? "..." : ""}"
+    end
+
+    private_class_method def self.format_default_result(result)
+      severity_icon = get_severity_icon(result["extra"]["severity"])
+      title = result["extra"]["message"].split(".")[0].strip
+      file_info = "#{File.basename(result["path"])}:#{result["start"]["line"]}"
+
+      puts "  #{severity_icon} #{title}"
+      puts "     📁 #{file_info} | #{extract_short_description(result)}"
     end
 
     # Parses command-line arguments to build an options hash.
@@ -120,7 +213,7 @@ module ShieldAst
 
         Options:
           -s, --sast       Run Static Application Security Testing (SAST) with Semgrep.
-          -c, --sca        Run Software Composition Analysis (SCA) with dep-scan.
+          -c, --sca        Run Software Composition Analysis (SCA) with OSV Scanner.
           -i, --iac        Run Infrastructure as Code (IaC) analysis with Semgrep.
           -o, --output     Specify the output format (e.g., json, sarif, console).
           -h, --help       Show this help message.
