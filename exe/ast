@@ -4,4 +4,4 @@
 require "shield_ast"
 
 # Call the main service
-ShieldAst::Main.call(*ARGV)
+ShieldAst::Main.call(ARGV)
