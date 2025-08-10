@@ -66,17 +66,17 @@ module ShieldAst
 
         next if results.empty?
 
-        # Order by severity and show only top five
+        # Order by severity showing top 5 only
         sorted_results = sort_by_severity(results)
         top_results = sorted_results.first(5)
         remaining_count = results.length - top_results.length
 
-        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"}#{remaining_count > 0 ? ", showing top 5" : ""})"
+        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"}#{remaining_count.positive? ? ", showing top 5" : ""})"
         puts "-" * 60
 
         format_report(top_results, type)
 
-        if remaining_count > 0
+        if remaining_count.positive?
           puts "     ... and #{remaining_count} more #{remaining_count == 1 ? "issue" : "issues"} (run with --verbose to see all)"
         end
       end
@@ -132,7 +132,8 @@ module ShieldAst
     end
 
     private_class_method def self.extract_short_description(result)
-      description = result["extra"]["message"].gsub("\n", " ").strip
+      message = result["extra"]["message"] || "No description available"
+      description = message.gsub("\n", " ").strip
       if description.length > 80
         "#{description[0..80]}..."
       else
@@ -189,7 +190,8 @@ module ShieldAst
 
     private_class_method def self.format_default_result(result)
       severity_icon = get_severity_icon(result["extra"]["severity"])
-      title = result["extra"]["message"].split(".")[0].strip
+      message = result["extra"]["message"] || "Unknown issue"
+      title = message.split(".")[0].strip
       file_info = "#{File.basename(result["path"])}:#{result["start"]["line"]}"
 
       puts "  #{severity_icon} #{title}"
