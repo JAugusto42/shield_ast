@@ -25,25 +25,15 @@ module ShieldAst
         puts "Exit code: #{exit_code}" if ENV["DEBUG"]
         puts "Output: #{output}" if ENV["DEBUG"]
 
-        # OSV Scanner exit codes:
-        # 0: No vulnerabilities found
-        # 1: Vulnerabilities found
-        # 1-126: Vulnerability result related errors
-        # 127: General error
-        # 128: No packages found
-        # 129-255: Non result related errors
-
         case exit_code
         when 0
-          { "results" => [] } # No vulnerabilities
+          { "results" => [] }
         when 1
-          { "results" => parse_json_output(output) } # Vulnerabilities found
+          { "results" => parse_json_output(output) }
         when 1..126
-          # Vulnerability related errors, but try to parse results anyway
           puts "OSV Scanner vulnerability error (exit code: #{exit_code})" if ENV["DEBUG"]
           { "results" => parse_json_output(output) }
         when 127
-          # General error, but if we have JSON output, use it
           if output.include?('{"results"')
             puts "OSV Scanner completed with general error but has results" if ENV["DEBUG"]
             { "results" => parse_json_output(output) }
@@ -111,7 +101,6 @@ module ShieldAst
       severity = determine_severity(vuln, package_data)
       file_path = determine_file_path(ecosystem)
 
-      # Extract fixed version info
       fixed_version = extract_fixed_version(vuln)
 
       {
@@ -142,7 +131,6 @@ module ShieldAst
     end
 
     def self.extract_fixed_version(vuln)
-      # Try to find fixed version in affected ranges
       if vuln["affected"] && vuln["affected"].is_a?(Array)
         vuln["affected"].each do |affected|
           if affected["ranges"] && affected["ranges"].is_a?(Array)
@@ -155,14 +143,12 @@ module ShieldAst
             end
           end
 
-          # Also check database_specific for fixed version
           if affected["database_specific"] && affected["database_specific"]["last_affected"]
-            return ">" + affected["database_specific"]["last_affected"]
+            return "> #{affected["database_specific"]["last_affected"]}"
           end
         end
       end
 
-      # Fallback: check database_specific at root level
       if vuln["database_specific"]
         return vuln["database_specific"]["fixed_version"] if vuln["database_specific"]["fixed_version"]
       end
@@ -171,17 +157,13 @@ module ShieldAst
     end
 
     def self.determine_severity(vuln, package_data)
-      # Check database_specific severity first
-      if vuln.dig("database_specific", "severity")
-        return map_severity(vuln["database_specific"]["severity"])
-      end
+      return map_severity(vuln["database_specific"]["severity"]) if vuln.dig("database_specific", "severity")
 
-      # Check groups max_severity
       groups = package_data&.dig("groups") || []
       max_severity = groups.first&.dig("max_severity")
       return cvss_to_severity(max_severity.to_f) if max_severity
 
-      "WARNING" # Default
+      "WARNING" # Default severity
     end
 
     def self.determine_file_path(ecosystem)
