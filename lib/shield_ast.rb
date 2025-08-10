@@ -66,10 +66,19 @@ module ShieldAst
 
         next if results.empty?
 
-        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"})"
+        # Order by severity and show only top five
+        sorted_results = sort_by_severity(results)
+        top_results = sorted_results.first(5)
+        remaining_count = results.length - top_results.length
+
+        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"}#{remaining_count > 0 ? ", showing top 5" : ""})"
         puts "-" * 60
 
-        format_report(results, type)
+        format_report(top_results, type)
+
+        if remaining_count > 0
+          puts "     ... and #{remaining_count} more #{remaining_count == 1 ? "issue" : "issues"} (run with --verbose to see all)"
+        end
       end
 
       puts "\n✅ Scan finished in: #{format_duration(execution_time)}"
@@ -79,6 +88,16 @@ module ShieldAst
       else
         severity_summary = calculate_severity_summary(reports)
         puts "📊 Total: #{total_issues} findings #{severity_summary}"
+      end
+    end
+
+    # Order by severity (ERROR > WARNING > INFO)
+    private_class_method def self.sort_by_severity(results)
+      severity_order = { "ERROR" => 0, "WARNING" => 1, "INFO" => 2 }
+
+      results.sort_by do |result|
+        severity = result["severity"] || result.dig("extra", "severity") || "INFO"
+        severity_order[severity.upcase] || 3
       end
     end
 
