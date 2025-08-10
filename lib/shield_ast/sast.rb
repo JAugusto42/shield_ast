@@ -8,7 +8,6 @@ module ShieldAst
   # Runs SAST analysis using Semgrep.
   class SAST
     def self.scan(path)
-      puts "Running SAST scan ..."
       cmd = ["semgrep", "scan", path, "--json", "--disable-version-check"]
       stdout, stderr, status = Open3.capture3(*cmd)
 

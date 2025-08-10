@@ -6,8 +6,6 @@ require "json"
 module ShieldAst
   class IaC
     def self.scan(path)
-      puts "Running IaC scan ..."
-
       # Execute Semgrep with IaC-specific rulesets
       cmd = "semgrep --config=r/terraform --config=r/kubernetes --config=r/docker --config=r/yaml --json --quiet #{path}"
       output = `#{cmd}`

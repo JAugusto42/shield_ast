@@ -5,7 +5,6 @@ require "json"
 module ShieldAst
   class SCA
     def self.scan(path)
-      puts "Running SCA scan ..."
       puts "Scanning path: #{path}" if ENV["DEBUG"]
 
       if scanner_available?

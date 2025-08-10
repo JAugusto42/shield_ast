@@ -12,17 +12,17 @@ module ShieldAst
       reports = {}
 
       if options[:sast]
-        puts "-> Running SAST scan..."
+        puts "🔍 Running SAST ..."
         reports[:sast] = SAST.scan(path)
       end
 
       if options[:sca]
-        puts "-> Running SCA scan..."
+        puts "📦 Running SCA ..."
         reports[:sca] = SCA.scan(path)
       end
 
       if options[:iac]
-        puts "-> Running IAC scan..."
+        puts "☁️ Running IaC ..."
         reports[:iac] = IaC.scan(path)
       end
 

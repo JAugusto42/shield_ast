@@ -36,15 +36,13 @@ module ShieldAst
       path = options[:path] || Dir.pwd
       options = apply_default_scanners(options)
 
-      puts "\n-> Starting scan..."
+      puts "🚀 Starting scan ..."
       start_time = Time.now
 
-      reports = Runner.run(options, path)
+      reports = Runner.run(options, path) || {}
 
       end_time = Time.now
       execution_time = end_time - start_time
-
-      puts "Scan finished."
 
       display_reports(reports, execution_time)
     end
@@ -74,13 +72,13 @@ module ShieldAst
         format_report(results, type)
       end
 
-      puts "\n⏱️  Execution time: #{format_duration(execution_time)}"
+      puts "\n✅ Scan finished in: #{format_duration(execution_time)}"
 
       if total_issues.zero?
         puts "✅ No security issues found! Your code looks clean."
       else
         severity_summary = calculate_severity_summary(reports)
-        puts "📊 Summary: #{total_issues} total issues #{severity_summary}"
+        puts "📊 Total: #{total_issues} findings #{severity_summary}"
       end
     end
 
