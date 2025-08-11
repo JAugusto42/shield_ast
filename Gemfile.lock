@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    shield_ast (1.0.0)
+    shield_ast (1.1.0)
 
 GEM
   remote: https://rubygems.org/
