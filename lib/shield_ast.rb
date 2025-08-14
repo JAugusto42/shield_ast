@@ -1,23 +1,31 @@
+# lib/shield_ast/main.rb
 # frozen_string_literal: true
 
 require_relative "shield_ast/version"
 require_relative "shield_ast/runner"
-
 require "json"
+require "fileutils"
+require "erb"
+require "prawn"
+require "prawn/table"
 
 # Main module for the Shield AST gem.
 module ShieldAst
   class Error < StandardError; end
 
   # Main class for the Shield AST command-line tool.
-  # Handles command-line argument parsing and delegates to the Runner.
   class Main
+    SCAN_DATA_FILE = File.join(Dir.pwd, "lib", "reports", "scan_data.json")
+    REPORT_JSON_FILE = File.join(Dir.pwd, "lib", "reports", "scan_report.json")
+    REPORT_PDF_FILE = File.join(Dir.pwd, "lib", "reports", "scan_report.pdf")
+    PDF_TEMPLATE = File.join(__dir__, "reports", "templates", "pdf_report_template.rb")
+
     def self.call(args)
       options = parse_args(args)
       handle_options(options)
     end
 
-    private_class_method def self.handle_options(options)
+    def self.handle_options(options)
       if options[:help]
         show_help
       elsif options[:version]
@@ -25,14 +33,14 @@ module ShieldAst
       elsif options[:command] == "scan"
         run_scan(options)
       elsif options[:command] == "report"
-        puts "Generating report... (not yet implemented)"
+        generate_report(options)
       else
         puts "Invalid command. Use 'ast help' for more information."
         show_help
       end
     end
 
-    private_class_method def self.run_scan(options)
+    def self.run_scan(options)
       path = options[:path] || Dir.pwd
       options = apply_default_scanners(options)
 
@@ -45,9 +53,129 @@ module ShieldAst
       execution_time = end_time - start_time
 
       display_reports(reports, execution_time)
+      save_scan_data(reports, execution_time)
     end
 
-    private_class_method def self.apply_default_scanners(options)
+    def self.save_scan_data(reports, execution_time)
+      normalized_reports = {}
+      reports.each do |key, value|
+        normalized_reports[key.to_sym] = value.transform_keys(&:to_sym)
+      end
+      data = {
+        reports: normalized_reports,
+        execution_time: execution_time,
+        generated_at: Time.now.strftime("%Y-%m-%d %H:%M:%S %z")
+      }
+      FileUtils.mkdir_p(File.dirname(SCAN_DATA_FILE))
+      File.write(SCAN_DATA_FILE, JSON.pretty_generate(data))
+      puts "Scan data saved to: #{SCAN_DATA_FILE}"
+    end
+
+    def self.load_scan_data
+      unless File.exist?(SCAN_DATA_FILE)
+        puts "Error: Scan data file #{SCAN_DATA_FILE} does not exist."
+        return nil
+      end
+
+      begin
+        JSON.parse(File.read(SCAN_DATA_FILE), symbolize_names: true)
+      rescue JSON::ParserError => e
+        puts "Error: Invalid scan data in #{SCAN_DATA_FILE}: #{e.message}"
+        nil
+      end
+    end
+
+    def self.generate_report(options)
+      scan_data = load_scan_data
+      unless scan_data
+        puts "No scan data available. Please run 'ast scan' first."
+        return
+      end
+
+      output_format = options[:output] || "json"
+      unless %w[json pdf].include?(output_format)
+        puts "Error: Invalid output format '#{output_format}'. Use 'json' or 'pdf'."
+        return
+      end
+
+      puts "Generating #{output_format.upcase} report..."
+
+      if output_format == "json"
+        generate_json_report(scan_data)
+      elsif output_format == "pdf"
+        generate_pdf_report(scan_data)
+      end
+    end
+
+    def self.generate_json_report(scan_data)
+      FileUtils.mkdir_p(File.dirname(REPORT_JSON_FILE))
+      report = {
+        generated_at: scan_data[:generated_at],
+        scan_duration: format_duration(scan_data[:execution_time]),
+        total_issues: calculate_total_issues(scan_data[:reports]),
+        severity_summary: calculate_severity_summary(scan_data[:reports]),
+        reports: scan_data[:reports]
+      }
+      File.write(REPORT_JSON_FILE, JSON.pretty_generate(report))
+      puts "JSON report generated at: #{REPORT_JSON_FILE}"
+    end
+
+    def self.generate_pdf_report(scan_data)
+      unless File.exist?(PDF_TEMPLATE)
+        puts "Error: PDF template file #{PDF_TEMPLATE} not found."
+        return
+      end
+
+      FileUtils.mkdir_p(File.dirname(REPORT_PDF_FILE))
+
+      version = ShieldAst::VERSION
+      generated_at = scan_data[:generated_at]
+      scan_duration = format_duration(scan_data[:execution_time])
+      sast_results = normalize_results(sort_by_severity(scan_data[:reports][:sast]&.[](:results) || []))
+      sca_results = normalize_results(sort_by_severity(scan_data[:reports][:sca]&.[](:results) || []))
+      iac_results = normalize_results(sort_by_severity(scan_data[:reports][:iac]&.[](:results) || []))
+      total_issues = calculate_total_issues(scan_data[:reports])
+      severity_summary = calculate_severity_summary(scan_data[:reports])
+      output_file = REPORT_PDF_FILE
+
+      begin
+        template_context = Object.new
+        template_context.instance_variable_set(:@version, version)
+        template_context.instance_variable_set(:@generated_at, generated_at)
+        template_context.instance_variable_set(:@scan_duration, scan_duration)
+        template_context.instance_variable_set(:@sast_results, sast_results)
+        template_context.instance_variable_set(:@sca_results, sca_results)
+        template_context.instance_variable_set(:@iac_results, iac_results)
+        template_context.instance_variable_set(:@total_issues, total_issues)
+        template_context.instance_variable_set(:@severity_summary, severity_summary)
+        template_context.instance_variable_set(:@output_file, output_file)
+        template = File.read(PDF_TEMPLATE)
+        template_context.instance_eval template, PDF_TEMPLATE
+        puts "PDF report generated at: #{REPORT_PDF_FILE}"
+      rescue StandardError => e
+        puts "Error: Failed to generate PDF: #{e.message}"
+        puts "Error: Backtrace: #{e.backtrace.join("\n")}"
+      end
+    end
+
+    def self.normalize_results(results)
+      results.map do |result|
+        normalized = result.transform_keys(&:to_sym)
+        normalized[:severity] ||= normalized[:extra]&.[](:severity) || normalized[:extra]&.[]("severity") || "INFO"
+        normalized[:vulnerable_version] = normalized[:vulnerable_version].to_s if normalized[:vulnerable_version]
+        normalized[:fixed_version] = normalized[:fixed_version].to_s if normalized[:fixed_version]
+        normalized
+      end
+    end
+
+    def self.calculate_total_issues(reports)
+      sast_count = (reports[:sast]&.[](:results) || reports["sast"]&.[]("results") || []).length
+      sca_count = (reports[:sca]&.[](:results) || reports["sca"]&.[]("results") || []).length
+      iac_count = (reports[:iac]&.[](:results) || reports["iac"]&.[]("results") || []).length
+      sast_count + sca_count + iac_count
+    end
+
+    def self.apply_default_scanners(options)
       options.tap do |o|
         if !o[:sast] && !o[:sca] && !o[:iac]
           o[:sast] = true
@@ -57,16 +185,15 @@ module ShieldAst
       end
     end
 
-    private_class_method def self.display_reports(reports, execution_time)
+    def self.display_reports(reports, execution_time)
       total_issues = 0
 
       reports.each do |type, report_data|
-        results = report_data["results"] || []
+        results = report_data[:results] || report_data["results"] || []
         total_issues += results.length
 
         next if results.empty?
 
-        # Order by severity showing top 5 only
         sorted_results = sort_by_severity(results)
         top_results = sorted_results.first(5)
         remaining_count = results.length - top_results.length
@@ -87,33 +214,35 @@ module ShieldAst
         puts "✅ No security issues found! Your code looks clean."
       else
         severity_summary = calculate_severity_summary(reports)
-        puts "📊 Total: #{total_issues} findings #{severity_summary}"
+        puts "📊 Total: #{total_issues} findings {error_count: #{severity_summary[:error_count]}, warning_count: #{severity_summary[:warning_count]}, info_count: #{severity_summary[:info_count]}}"
       end
     end
 
-    # Order by severity (ERROR > WARNING > INFO)
-    private_class_method def self.sort_by_severity(results)
+    def self.sort_by_severity(results)
       severity_order = { "ERROR" => 0, "WARNING" => 1, "INFO" => 2 }
 
       results.sort_by do |result|
-        severity = result["severity"] || result.dig("extra", "severity") || "INFO"
+        severity = result[:severity] || result["severity"] || result.dig(:extra,
+                                                                         :severity) || result.dig("extra",
+                                                                                                  "severity") || "INFO"
         severity_order[severity.upcase] || 3
+      rescue TypeError
+        3
       end
     end
 
-    private_class_method def self.format_report(results, scan_type)
+    def self.format_report(results, scan_type)
       results.each_with_index do |result, index|
         if scan_type == :sca && has_sca_format?(result)
           format_sca_result(result)
         else
           format_default_result(result)
         end
-        puts "" if index < results.length - 1 # Add spacing between items, but not after last
+        puts "" if index < results.length - 1
       end
     end
 
-    # Helper methods for better formatting
-    private_class_method def self.get_severity_icon(severity)
+    def self.get_severity_icon(severity)
       case severity&.upcase
       when "ERROR" then "🔴"
       when "WARNING" then "🟡"
@@ -122,7 +251,7 @@ module ShieldAst
       end
     end
 
-    private_class_method def self.get_scan_icon(scan_type)
+    def self.get_scan_icon(scan_type)
       case scan_type
       when :sast then "🔍"
       when :sca then "📦"
@@ -131,24 +260,15 @@ module ShieldAst
       end
     end
 
-    private_class_method def self.extract_short_description(result)
-      message = result["extra"]["message"] || "No description available"
-      description = message.gsub("\n", " ").strip
-      if description.length > 80
-        "#{description[0..80]}..."
-      else
-        description
-      end
-    end
-
-    private_class_method def self.calculate_severity_summary(reports)
+    def self.calculate_severity_summary(reports)
       error_count = 0
       warning_count = 0
       info_count = 0
 
       reports.each_value do |report_data|
-        (report_data["results"] || []).each do |result|
-          severity = result["severity"] || result.dig("extra", "severity")
+        (report_data[:results] || report_data["results"] || []).each do |result|
+          severity = result[:severity] || result["severity"] || result.dig(:extra,
+                                                                           :severity) || result.dig("extra", "severity")
           case severity&.upcase
           when "ERROR" then error_count += 1
           when "WARNING" then warning_count += 1
@@ -157,15 +277,10 @@ module ShieldAst
         end
       end
 
-      parts = []
-      parts << "#{error_count} 🔴" if error_count.positive?
-      parts << "#{warning_count} 🟡" if warning_count.positive?
-      parts << "#{info_count} 🔵" if info_count.positive?
-
-      "(#{parts.join(", ")})"
+      { error_count: error_count, warning_count: warning_count, info_count: info_count }
     end
 
-    private_class_method def self.format_duration(seconds)
+    def self.format_duration(seconds)
       if seconds < 1
         "#{(seconds * 1000).round}ms"
       elsif seconds < 60
@@ -177,32 +292,33 @@ module ShieldAst
       end
     end
 
-    private_class_method def self.has_sca_format?(result)
-      result.key?("title") && result.key?("description") &&
-      result.key?("vulnerable_version") && result.key?("fixed_version")
+    def self.has_sca_format?(result)
+      (result.key?(:title) || result.key?("title")) &&
+        (result.key?(:description) || result.key?("description")) &&
+        (result.key?(:vulnerable_version) || result.key?("vulnerable_version")) &&
+        (result.key?(:fixed_version) || result.key?("fixed_version"))
     end
 
-    private_class_method def self.format_sca_result(result)
-      severity_icon = get_severity_icon(result['severity'])
-      puts "  #{severity_icon} #{result["title"]} (#{result["vulnerable_version"]} → #{result["fixed_version"]})"
-      puts "     📁 #{result["file"]} | #{result["description"][0..80]}#{result["description"].length > 80 ? "..." : ""}"
+    def self.format_sca_result(result)
+      severity_icon = get_severity_icon(result[:severity] || result["severity"])
+      puts "  #{severity_icon} #{result[:title] || result["title"]} (#{result[:vulnerable_version] || result["vulnerable_version"]} → #{result[:fixed_version] || result["fixed_version"]})"
+      puts "     📁 #{result[:file] || result["file"]} | #{(result[:description] || result["description"] || "")[0..80]}#{(result[:description] || result["description"] || "").length > 80 ? "..." : ""}"
     end
 
-    private_class_method def self.format_default_result(result)
-      severity_icon = get_severity_icon(result["extra"]["severity"])
-      message = result["extra"]["message"] || "Unknown issue"
+    def self.format_default_result(result)
+      severity_icon = get_severity_icon(result[:severity] || result["severity"] || result[:extra]&.[](:severity) || result["extra"]&.[]("severity"))
+      message = result[:extra]&.[](:message) || result["extra"]&.[]("message") || "Unknown issue"
       title = message.split(".")[0].strip
-      file_info = "#{File.basename(result["path"])}:#{result["start"]["line"]}"
+      file_info = "#{File.basename(result[:path] || result["path"] || "N/A")}:#{result[:start]&.[](:line) || result["start"]&.[]("line") || "N/A"}"
 
       puts "  #{severity_icon} #{title}"
-      puts "     📁 #{file_info} | #{extract_short_description(result)}"
+      puts "     📁 #{file_info} | #{(result[:extra]&.[](:message) || result["extra"]&.[]("message") || "No description available")[0..80]}..."
     end
 
-    # Parses command-line arguments to build an options hash.
-    private_class_method def self.parse_args(args)
-      options = { command: nil, path: nil, sast: false, sca: false, iac: false, help: false, version: false }
-
-      args.each do |arg|
+    def self.parse_args(args)
+      options = { command: nil, path: nil, sast: false, sca: false, iac: false, help: false, version: false,
+                  output: nil }
+      args.each_with_index do |arg, index|
         case arg
         when "scan" then options[:command] = "scan"
         when "report" then options[:command] = "report"
@@ -211,43 +327,34 @@ module ShieldAst
         when "-i", "--iac" then options[:iac] = true
         when "-h", "--help" then options[:help] = true
         when "--version" then options[:version] = true
+        when "-o", "--output"
+          options[:output] = args[index + 1] if index + 1 < args.length
         when /^[^-]/ then options[:path] = arg if options[:command] == "scan" && options[:path].nil?
         end
       end
       options
     end
 
-    # Displays the help message for the CLI tool.
-    private_class_method def self.show_help
+    def self.show_help
       puts <<~HELP
         ast - A powerful command-line tool for Application Security Testing
-
         Usage:
           ast [command] [options]
-
         Commands:
           scan [path]    Scans a directory for vulnerabilities. Defaults to the current directory.
-          report         Generates a detailed report from the last scan.
+          report         Generates a report from the last scan in JSON or PDF format.
           help           Shows this help message.
-
         Options:
           -s, --sast       Run Static Application Security Testing (SAST) with Semgrep.
           -c, --sca        Run Software Composition Analysis (SCA) with OSV Scanner.
           -i, --iac        Run Infrastructure as Code (IaC) analysis with Semgrep.
-          -o, --output     Specify the output format (e.g., json, sarif, console).
+          -o, --output     Specify the output format for report (json or pdf, default: json).
           -h, --help       Show this help message.
           --version        Show the ast version.
-
         Examples:
-          # Scan the current directory for all types of vulnerabilities
           ast scan
-
-          # Run only SAST and SCA on a specific project folder
           ast scan /path/to/project --sast --sca
-
-          # Generate a report in SARIF format
-          ast report --output sarif
-
+          ast report --output pdf
         Description:
           ast is an all-in-one command-line tool that automates security testing by
           integrating popular open-source scanners for SAST, SCA, and IaC, helping you
