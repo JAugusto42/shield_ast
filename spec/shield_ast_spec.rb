@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'rspec'
+require_relative '../lib/shield_ast'
+
 RSpec.describe ShieldAst do
   let(:output) { StringIO.new }
 
@@ -293,7 +296,7 @@ RSpec.describe ShieldAst do
 
       it "displays correct severity counts" do
         ShieldAst::Main.call(%w[scan])
-        expect(output.string).to include("📊 Total: 5 findings (2 🔴, 2 🟡, 1 🔵)")
+        expect(output.string).to include("📊 Total: 5 findings {error_count: 2, warning_count: 2, info_count: 1}")
       end
     end
   end
