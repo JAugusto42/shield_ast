@@ -1,11 +1,9 @@
 name: Ruby
-
 on:
   push:
     branches:
       - main
   pull_request:
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,16 +14,28 @@ jobs:
           - "3.2.9"
           - "3.3.9"
           - "3.4.5"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+
+      - name: Install Semgrep
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install semgrep
+
+      - name: Install OSV-Scanner
+        run: |
+          curl -L https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/
+
       - name: Run RSpec tests
         run: bundle exec rspec

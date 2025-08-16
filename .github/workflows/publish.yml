@@ -1,15 +1,12 @@
 name: Publish to RubyGems
-
 on:
   push:
     tags:
       - "v*"
-
 jobs:
   publish:
     runs-on: ubuntu-latest
     name: Publish Ruby Gem
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,6 +18,20 @@ jobs:
         with:
           ruby-version: "3.4" # Use a stable, recent Ruby version
           bundler-cache: true
+
+      - name: Install Semgrep
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install semgrep
+
+      - name: Install OSV-Scanner
+        run: |
+          curl -L https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner
+          sudo mv osv-scanner /usr/local/bin/
+
+      - name: Run RSpec tests
+        run: bundle exec rspec
 
       - name: Build the gem
         run: gem build shield_ast.gemspec
