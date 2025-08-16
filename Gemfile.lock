@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    shield_ast (1.2.0)
+    shield_ast (1.2.1)
       erb (~> 4.0)
       fileutils (~> 1.7)
       json (~> 2.6)
