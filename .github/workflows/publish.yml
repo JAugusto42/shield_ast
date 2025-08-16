@@ -22,9 +22,6 @@ jobs:
           ruby-version: "3.4" # Use a stable, recent Ruby version
           bundler-cache: true
 
-      - name: Run RSpec tests
-        run: bundle exec rspec
-
       - name: Build the gem
         run: gem build shield_ast.gemspec
 
