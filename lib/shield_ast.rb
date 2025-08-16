@@ -21,8 +21,20 @@ module ShieldAst
     PDF_TEMPLATE = File.join(__dir__, "reports", "templates", "pdf_report_template.rb")
 
     def self.call(args)
+      ascii_banner
+
+      unless scanner_exists?("osv-scanner") && scanner_exists?("semgrep")
+        puts "\e[31m[!] ERROR:\e[0m Required tools not found."
+        puts "    Install: \e[33mosv-scanner\e[0m, \e[33msemgrep\e[0m"
+        exit 1
+      end
+
       options = parse_args(args)
       handle_options(options)
+    end
+
+    def self.scanner_exists?(scanner)
+      system("which #{scanner} > /dev/null 2>&1")
     end
 
     def self.handle_options(options)
@@ -360,6 +372,13 @@ module ShieldAst
           integrating popular open-source scanners for SAST, SCA, and IaC, helping you
           find and fix vulnerabilities early in the development lifecycle.
       HELP
+    end
+
+    def self.ascii_banner
+      puts <<~BANNER
+        [>>> SHIELD AST <<<]
+        powered by open source (semgrep + osv-scanner) \n
+      BANNER
     end
   end
 end
