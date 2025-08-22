@@ -15,9 +15,9 @@ module ShieldAst
 
   # Main class for the Shield AST command-line tool.
   class Main
-    SCAN_DATA_FILE = File.join(Dir.pwd, "lib", "reports", "scan_data.json")
-    REPORT_JSON_FILE = File.join(Dir.pwd, "lib", "reports", "scan_report.json")
-    REPORT_PDF_FILE = File.join(Dir.pwd, "lib", "reports", "scan_report.pdf")
+    SCAN_DATA_FILE = File.join(Dir.pwd, "reports", "scan_data.json")
+    REPORT_JSON_FILE = File.join(Dir.pwd, "reports", "scan_report.json")
+    REPORT_PDF_FILE = File.join(Dir.pwd, "reports", "scan_report.pdf")
     PDF_TEMPLATE = File.join(__dir__, "reports", "templates", "pdf_report_template.rb")
 
     def self.call(args)
