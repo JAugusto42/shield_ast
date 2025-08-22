@@ -321,7 +321,7 @@ module ShieldAst
       severity_icon = get_severity_icon(result[:severity] || result["severity"] || result[:extra]&.[](:severity) || result["extra"]&.[]("severity"))
       message = result[:extra]&.[](:message) || result["extra"]&.[]("message") || "Unknown issue"
       title = message.split(".")[0].strip
-      file_info = "#{File.basename(result[:path] || result["path"] || "N/A")}:#{result[:start]&.[](:line) || result["start"]&.[]("line") || "N/A"}"
+      file_info = "#{result[:path] || result["path"] || "N/A"}:#{result[:start]&.[](:line) || result["start"]&.[]("line") || "N/A"}"
 
       puts "  #{severity_icon} #{title}"
       puts "     📁 #{file_info} | #{(result[:extra]&.[](:message) || result["extra"]&.[]("message") || "No description available")[0..80]}..."
