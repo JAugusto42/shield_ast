@@ -1,7 +1,7 @@
 # Shield AST - Application Security Testing CLI
 
 [![Gem Version](https://badge.fury.io/rb/shield_ast.svg)](https://badge.fury.io/rb/shield_ast)
-[![Build Status](https://github.com/SEU_USER/shield_ast/actions/workflows/ci.yml/badge.svg)](https://github.com/SEU_USER/shield_ast/actions)
+[![Build Status](https://github.com/JAugusto42/shield_ast/actions/workflows/ci.yml/badge.svg)](https://github.com/JAugusto42/shield_ast/actions)
 [![Downloads](https://img.shields.io/gem/dt/shield_ast.svg)](https://rubygems.org/gems/shield_ast)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
