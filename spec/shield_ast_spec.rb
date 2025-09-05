@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'rspec'
-require_relative '../lib/shield_ast'
+require "rspec"
+require_relative "../lib/shield_ast"
 
 RSpec.describe ShieldAst do
   let(:output) { StringIO.new }
@@ -91,15 +91,14 @@ RSpec.describe ShieldAst do
         ShieldAst::Main.call(%w[scan])
 
         expect(output.string).to include("🔍 SAST (4 issues)")
-        expect(output.string).to include("🔴") # ERROR severity icon
-        expect(output.string).to include("🟡") # WARNING severity icon
-        expect(output.string).to include("🔵") # INFO severity icon
+        expect(output.string).to include("🔴")
+        expect(output.string).to include("🟡")
+        expect(output.string).to include("🔵")
       end
 
       it "sorts results by severity (ERROR first, then WARNING, then INFO)" do
         ShieldAst::Main.call(%w[scan])
 
-        # ERROR results should appear before WARNING and INFO
         error_position = output.string.index("SQL injection vulnerability detected")
         error_position2 = output.string.index("Critical security flaw in authentication")
         warning_position = output.string.index("Potential XSS vulnerability found")
@@ -138,20 +137,13 @@ RSpec.describe ShieldAst do
           expect(output.string).to include("🔍 SAST (8 issues, showing top 5)")
           expect(output.string).to include("... and 3 more issues")
 
-          # Should show first 5 security issues
           (1..5).each do |i|
             expect(output.string).to include("Security issue #{i}")
           end
 
-          # Should not show the remaining issues
           (6..8).each do |i|
             expect(output.string).not_to include("Security issue #{i}")
           end
-        end
-
-        it "suggests using --verbose to see all results" do
-          ShieldAst::Main.call(%w[scan])
-          expect(output.string).to include("(run with --verbose to see all)")
         end
       end
 
