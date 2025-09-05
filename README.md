@@ -49,6 +49,27 @@ ast [command] [options]
 - **`--version`** – Show the AST version.
 
 ---
+## ✨ NEW: AI-Powered False Positive Analysis
+
+Shield AST can use the **Google Gemini API** to automatically analyze findings and flag potential false positives, helping you focus on what matters most.
+
+### How to Enable It
+
+To activate this feature, you need a Google AI API key.
+
+#### 1. Get Your API Key
+1.  Go to **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
+2.  Click on **"Create API key"**. You might need to log in with your Google account.
+3.  Copy the generated API key. It's a long string of letters and numbers.
+
+#### 2. Set the Environment Variable
+Set the API key as an environment variable in your terminal.
+
+```bash
+export GEMINI_API_KEY="GEMINI_API_KEY"
+```
+
+---
 
 ## 📌 Examples
 

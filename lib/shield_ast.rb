@@ -8,6 +8,7 @@ require "fileutils"
 require "erb"
 require "prawn"
 require "prawn/table"
+require "gemini-ai"
 
 # Main module for the Shield AST gem.
 module ShieldAst
@@ -198,36 +199,54 @@ module ShieldAst
     end
 
     def self.display_reports(reports, execution_time)
-      total_issues = 0
+      gemini_enabled = !ENV["GEMINI_API_KEY"].to_s.empty?
 
-      reports.each do |type, report_data|
-        results = report_data[:results] || report_data["results"] || []
-        total_issues += results.length
-
-        next if results.empty?
-
-        sorted_results = sort_by_severity(results)
-        top_results = sorted_results.first(5)
-        remaining_count = results.length - top_results.length
-
-        puts "\n#{get_scan_icon(type)} #{type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"}#{remaining_count.positive? ? ", showing top 5" : ""})"
-        puts "-" * 60
-
-        format_report(top_results, type)
-
-        if remaining_count.positive?
-          puts "     ... and #{remaining_count} more #{remaining_count == 1 ? "issue" : "issues"} (run with --verbose to see all)"
-        end
-      end
+      total_issues = flatten_findings(reports).length
 
       puts "\n✅ Scan finished in: #{format_duration(execution_time)}"
 
       if total_issues.zero?
         puts "✅ No security issues found! Your code looks clean."
-      else
-        severity_summary = calculate_severity_summary(reports)
-        puts "📊 Total: #{total_issues} findings {error_count: #{severity_summary[:error_count]}, warning_count: #{severity_summary[:warning_count]}, info_count: #{severity_summary[:info_count]}}"
+        return
       end
+
+      puts "\nScan Results:"
+      if gemini_enabled
+        puts "\e[34m🔑 Gemini API key found. False positive analysis enabled (this may slow down the scan).\e[0m"
+      end
+
+      reports.each do |scan_type, report_data|
+        next unless report_data.is_a?(Hash)
+
+        results = report_data[:results] || report_data["results"] || []
+        next if results.empty?
+
+        sorted_results = sort_by_severity(results)
+
+        top_results = sorted_results.first(5)
+        remaining_count = sorted_results.length - top_results.length
+
+        puts "\n#{get_scan_icon(scan_type.to_sym)} #{scan_type.to_s.upcase} (#{results.length} #{results.length == 1 ? "issue" : "issues"}#{remaining_count.positive? ? ", showing top 5" : ""})"
+        puts "-" * 60
+
+        top_results.each do |result|
+          if scan_type.to_sym == :sca && has_sca_format?(result)
+            format_sca_result(result)
+          else
+            fp_indicator = gemini_enabled ? check_for_false_positive(result) : ""
+            format_default_result(result, fp_indicator)
+          end
+          puts ""
+        end
+
+        if remaining_count.positive?
+          puts "... and #{remaining_count} more #{remaining_count == 1 ? "issue" : "issues"}. See the full report for details."
+        end
+      end
+
+      puts "\n#{"=" * 60}"
+      severity_summary = calculate_severity_summary(reports)
+      puts "📊 Total: #{total_issues} findings {error_count: #{severity_summary[:error_count]}, warning_count: #{severity_summary[:warning_count]}, info_count: #{severity_summary[:info_count]}}"
     end
 
     def self.sort_by_severity(results)
@@ -317,13 +336,13 @@ module ShieldAst
       puts "     📁 #{result[:file] || result["file"]} | #{(result[:description] || result["description"] || "")[0..80]}#{(result[:description] || result["description"] || "").length > 80 ? "..." : ""}"
     end
 
-    def self.format_default_result(result)
+    def self.format_default_result(result, fp_indicator = "")
       severity_icon = get_severity_icon(result[:severity] || result["severity"] || result[:extra]&.[](:severity) || result["extra"]&.[]("severity"))
       message = result[:extra]&.[](:message) || result["extra"]&.[]("message") || "Unknown issue"
       title = message.split(".")[0].strip
       file_info = "#{result[:path] || result["path"] || "N/A"}:#{result[:start]&.[](:line) || result["start"]&.[]("line") || "N/A"}"
 
-      puts "  #{severity_icon} #{title}"
+      puts "  #{severity_icon} #{title}#{fp_indicator}"
       puts "     📁 #{file_info} | #{(result[:extra]&.[](:message) || result["extra"]&.[]("message") || "No description available")[0..80]}..."
     end
 
@@ -345,6 +364,78 @@ module ShieldAst
         end
       end
       options
+    end
+
+    def self.flatten_findings(reports)
+      findings = []
+      reports.each do |scan_type, report_data|
+        results = report_data[:results] || report_data["results"] || []
+
+        results.each do |result|
+          findings << result.merge(scan_type: scan_type.to_sym)
+        end
+      end
+      sort_by_severity(findings)
+    end
+
+    def self.extract_code_snippet(file_path, line_number, context_lines = 10)
+      return "Code snippet not available (file not found)." unless File.exist?(file_path)
+      return "Code snippet not available (line number not specified)." unless line_number
+
+      lines = File.readlines(file_path)
+      start_line = [0, line_number - 1 - context_lines].max
+      end_line = [lines.length - 1, line_number - 1 + context_lines].min
+
+      snippet = []
+      (start_line..end_line).each do |i|
+        line_prefix = i + 1 == line_number ? ">> #{i + 1}: " : "   #{i + 1}: "
+        snippet << "#{line_prefix}#{lines[i].chomp}"
+      end
+      snippet.join("\n")
+    rescue StandardError => e
+      "Could not read code snippet: #{e.message}"
+    end
+
+    def self.check_for_false_positive(finding)
+      client = Gemini.new(
+        credentials: {
+          service: "generative-language-api",
+          api_key: ENV["GEMINI_API_KEY"]
+        },
+        options: { model: "gemini-2.5-pro" }
+      )
+
+      file_path = finding["path"]
+      line = finding.dig("start", "line")
+      message = finding["extra"]["message"] || finding["check_id"] || "N/A"
+      code_snippet = extract_code_snippet(file_path, line)
+
+      prompt = <<~PROMPT
+        Analyze the following security finding. Based on the code and the description, is it more likely to be a true positive or a false positive?
+
+        **Finding:** #{message}
+        **File:** #{file_path || "N/A"}:#{line || "N/A"}
+
+        **Code:**
+        ```
+        #{code_snippet}
+        ```
+
+        Respond with ONLY ONE of the following words: `TRUE_POSITIVE`, `FALSE_POSITIVE`, or `UNCERTAIN`.
+      PROMPT
+
+      begin
+        request_body = { contents: { role: "user", parts: { text: prompt } } }
+        response = client.generate_content(request_body)
+        result_text = response.dig("candidates", 0, "content", "parts", 0, "text")&.strip
+
+        return "\e[33m ⚠️ (Possible False Positive)\e[0m" if result_text == "FALSE_POSITIVE"
+        return "\e[36m 🛡️ (Verified by AI)\e[0m" if result_text == "TRUE_POSITIVE"
+      rescue StandardError => e
+        puts "An problem occurred with gemini api: #{e.message}"
+      end
+
+      ""
     end
 
     def self.show_help
