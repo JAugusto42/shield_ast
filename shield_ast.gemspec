@@ -34,10 +34,10 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency 'erb', "~> 4.0"
-  spec.add_dependency 'fileutils', "~> 1.7"
-  spec.add_dependency 'json', "~> 2.6"
-  spec.add_dependency 'prawn', "~> 2.4"
-  spec.add_dependency 'prawn-table', "~> 0.2"
-  spec.add_dependency 'gemini-ai', '~> 4.3'
+  spec.add_dependency "erb", "~> 4.0"
+  spec.add_dependency "fileutils", "~> 1.7"
+  spec.add_dependency "gemini-ai", "~> 4.3"
+  spec.add_dependency "json", "~> 2.6"
+  spec.add_dependency "prawn", "~> 2.4"
+  spec.add_dependency "prawn-table", "~> 0.2"
 end

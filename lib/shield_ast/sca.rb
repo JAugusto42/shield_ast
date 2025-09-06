@@ -4,6 +4,7 @@ require "json"
 
 module ShieldAst
   class SCA
+    # Wraps the logic for running SCA scan using Osv Scanner.
     def self.scan(path)
       puts "Scanning path: #{path}" if ENV["DEBUG"]
 

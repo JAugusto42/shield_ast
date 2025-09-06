@@ -5,10 +5,12 @@ require "json"
 require "open3"
 
 module ShieldAst
-  # Runs SAST analysis using Semgrep.
+  # Wraps the logic for running SAST scan using Semgrep.
   class SAST
     def self.scan(path)
-      cmd = ["semgrep", "scan", path, "--json", "--disable-version-check"]
+      cmd = [
+        "semgrep", "scan", "--config", "p/r2c-ci", "--config", "p/secrets", "--json", "--disable-version-check", path
+      ]
       stdout, stderr, status = Open3.capture3(*cmd)
 
       if status.success?

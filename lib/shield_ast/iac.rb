@@ -1,25 +1,33 @@
 # frozen_string_literal: true
 
-require "English"
 require "json"
+require "open3"
 
 module ShieldAst
+  # Wraps the logic for running Infrastructure as Code (IaC) scans using Semgrep.
   class IaC
     def self.scan(path)
-      # Execute Semgrep with IaC-specific rulesets
-      cmd = "semgrep --config=r/terraform --config=r/kubernetes --config=r/docker --config=r/yaml --json --quiet #{path}"
-      output = `#{cmd}`
+      cmd = [
+        "semgrep", "scan",
+        "--config", "r/terraform",
+        "--config", "r/kubernetes",
+        "--config", "r/docker",
+        "--config", "r/yaml",
+        "--json", "--quiet",
+        path
+      ]
 
-      if $CHILD_STATUS.success? && !output.strip.empty?
+      stdout, _stderr, status = Open3.capture3(*cmd)
+
+      if status.success? && !stdout.strip.empty?
         begin
-          report = JSON.parse(output)
+          report = JSON.parse(stdout)
           return { "results" => report["results"] || [] }
         rescue JSON::ParserError
           return { "results" => [] }
         end
       end
 
-      # Fallback if semgrep fails
       { "results" => [] }
     end
   end

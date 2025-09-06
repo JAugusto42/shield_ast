@@ -57,20 +57,30 @@ Shield AST can use the **Google Gemini API** to automatically analyze findings a
 
 To activate this feature, you need a Google AI API key.
 
-#### 1. Get Your API Key
-1.  Go to **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
-2.  Click on **"Create API key"**. You might need to log in with your Google account.
-3.  Copy the generated API key. It's a long string of letters and numbers.
+### 1. Get Your API Key
+First, you'll need a Google Gemini API key to enable AI analysis.
 
-#### 2. Set the Environment Variable
-Set the API key as an environment variable in your terminal.
+1.  Navigate to **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
+2.  Click **"Create API key"** (you may need to sign in with your Google account).
+3.  Copy the key once it's generated.
+
+### 2. Configure Your Environment
+Next, export the API key as an environment variable in your terminal.
 
 ```bash
-export GEMINI_API_KEY="GEMINI_API_KEY"
+# Replace with your actual API key
+export GEMINI_API_KEY="YOUR_API_KEY_HERE"
+````
+📌 Tip: This command is temporary and only lasts for the current terminal session.
+To make it permanent, add the line above to your shell's configuration file (e.g., ~/.zshrc or ~/.bash_profile).
+
+The tool defaults to the free gemini-2.5-flash model.
+If you have access to a more powerful model,
+you can specify it by setting the optional GEMINI_MODEL variable:
+
+```bash
+export GEMINI_MODEL="gemini-2.5-pro"
 ```
-
----
-
 ## 📌 Examples
 
 ```bash

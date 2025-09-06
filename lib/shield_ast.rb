@@ -1,8 +1,9 @@
-# lib/shield_ast/main.rb
 # frozen_string_literal: true
 
 require_relative "shield_ast/version"
 require_relative "shield_ast/runner"
+require_relative "shield_ast/ai_analyzer"
+
 require "json"
 require "fileutils"
 require "erb"
@@ -19,10 +20,10 @@ module ShieldAst
     SCAN_DATA_FILE = File.join(Dir.pwd, "reports", "scan_data.json")
     REPORT_JSON_FILE = File.join(Dir.pwd, "reports", "scan_report.json")
     REPORT_PDF_FILE = File.join(Dir.pwd, "reports", "scan_report.pdf")
-    PDF_TEMPLATE = File.join(__dir__, "reports", "templates", "pdf_report_template.rb")
+    PDF_TEMPLATE = File.join(Dir.pwd, "reports", "templates", "pdf_report_template.rb")
 
     def self.call(args)
-      ascii_banner
+      banner
 
       unless scanner_exists?("osv-scanner") && scanner_exists?("semgrep")
         puts "\e[31m[!] ERROR:\e[0m Required tools not found."
@@ -62,10 +63,10 @@ module ShieldAst
 
       reports = Runner.run(options, path) || {}
 
+      display_reports(reports)
+
       end_time = Time.now
       execution_time = end_time - start_time
-
-      display_reports(reports, execution_time)
       save_scan_data(reports, execution_time)
     end
 
@@ -82,6 +83,9 @@ module ShieldAst
       FileUtils.mkdir_p(File.dirname(SCAN_DATA_FILE))
       File.write(SCAN_DATA_FILE, JSON.pretty_generate(data))
       puts "Scan data saved to: #{SCAN_DATA_FILE}"
+
+      puts "\n🕒 Duration:: #{format_duration(execution_time)}"
+      puts "✅ DONE."
     end
 
     def self.load_scan_data
@@ -198,12 +202,10 @@ module ShieldAst
       end
     end
 
-    def self.display_reports(reports, execution_time)
+    def self.display_reports(reports)
       gemini_enabled = !ENV["GEMINI_API_KEY"].to_s.empty?
 
       total_issues = flatten_findings(reports).length
-
-      puts "\n✅ Scan finished in: #{format_duration(execution_time)}"
 
       if total_issues.zero?
         puts "✅ No security issues found! Your code looks clean."
@@ -212,7 +214,9 @@ module ShieldAst
 
       puts "\nScan Results:"
       if gemini_enabled
+        model = ENV.fetch("GEMINI_MODEL", "gemini-2.5-flash")
         puts "\e[34m🔑 Gemini API key found. False positive analysis enabled (this may slow down the scan).\e[0m"
+        puts "🤖 AI Model: #{model}"
       end
 
       reports.each do |scan_type, report_data|
@@ -233,7 +237,7 @@ module ShieldAst
           if scan_type.to_sym == :sca && has_sca_format?(result)
             format_sca_result(result)
           else
-            fp_indicator = gemini_enabled ? check_for_false_positive(result) : ""
+            fp_indicator = gemini_enabled ? ShieldAst::AiAnalyzer.new(result).call : ""
             format_default_result(result, fp_indicator)
           end
           puts ""
@@ -337,18 +341,21 @@ module ShieldAst
     end
 
     def self.format_default_result(result, fp_indicator = "")
-      severity_icon = get_severity_icon(result[:severity] || result["severity"] || result[:extra]&.[](:severity) || result["extra"]&.[]("severity"))
-      message = result[:extra]&.[](:message) || result["extra"]&.[]("message") || "Unknown issue"
-      title = message.split(".")[0].strip
-      file_info = "#{result[:path] || result["path"] || "N/A"}:#{result[:start]&.[](:line) || result["start"]&.[]("line") || "N/A"}"
+      severity_icon = get_severity_icon(result.dig("extra", "severity") || result["severity"])
+      message = result.dig("extra", "message") || result["check_id"] || "Unknown issue"
+      title = message.split(".").first&.strip || message
+      file_info = "#{result["path"] || "N/A"}:#{result.dig("start", "line") || "N/A"}"
 
       puts "  #{severity_icon} #{title}#{fp_indicator}"
-      puts "     📁 #{file_info} | #{(result[:extra]&.[](:message) || result["extra"]&.[]("message") || "No description available")[0..80]}..."
+      puts "     📁 #{file_info}"
+      puts "        #{message}"
     end
 
     def self.parse_args(args)
-      options = { command: nil, path: nil, sast: false, sca: false, iac: false, help: false, version: false,
-                  output: nil }
+      options = {
+        command: nil, path: nil, sast: false, sca: false, iac: false, help: false, version: false, output: nil
+      }
+
       args.each_with_index do |arg, index|
         case arg
         when "scan" then options[:command] = "scan"
@@ -378,66 +385,6 @@ module ShieldAst
       sort_by_severity(findings)
     end
 
-    def self.extract_code_snippet(file_path, line_number, context_lines = 10)
-      return "Code snippet not available (file not found)." unless File.exist?(file_path)
-      return "Code snippet not available (line number not specified)." unless line_number
-
-      lines = File.readlines(file_path)
-      start_line = [0, line_number - 1 - context_lines].max
-      end_line = [lines.length - 1, line_number - 1 + context_lines].min
-
-      snippet = []
-      (start_line..end_line).each do |i|
-        line_prefix = i + 1 == line_number ? ">> #{i + 1}: " : "   #{i + 1}: "
-        snippet << "#{line_prefix}#{lines[i].chomp}"
-      end
-      snippet.join("\n")
-    rescue StandardError => e
-      "Could not read code snippet: #{e.message}"
-    end
-
-    def self.check_for_false_positive(finding)
-      client = Gemini.new(
-        credentials: {
-          service: "generative-language-api",
-          api_key: ENV["GEMINI_API_KEY"]
-        },
-        options: { model: "gemini-2.5-pro" }
-      )
-
-      file_path = finding["path"]
-      line = finding.dig("start", "line")
-      message = finding["extra"]["message"] || finding["check_id"] || "N/A"
-      code_snippet = extract_code_snippet(file_path, line)
-
-      prompt = <<~PROMPT
-        Analyze the following security finding. Based on the code and the description, is it more likely to be a true positive or a false positive?
-
-        **Finding:** #{message}
-        **File:** #{file_path || "N/A"}:#{line || "N/A"}
-
-        **Code:**
-        ```
-        #{code_snippet}
-        ```
-
-        Respond with ONLY ONE of the following words: `TRUE_POSITIVE`, `FALSE_POSITIVE`, or `UNCERTAIN`.
-      PROMPT
-
-      begin
-        request_body = { contents: { role: "user", parts: { text: prompt } } }
-        response = client.generate_content(request_body)
-        result_text = response.dig("candidates", 0, "content", "parts", 0, "text")&.strip
-
-        return "\e[33m ⚠️ (Possible False Positive)\e[0m" if result_text == "FALSE_POSITIVE"
-        return "\e[36m 🛡️ (Verified by AI)\e[0m" if result_text == "TRUE_POSITIVE"
-      rescue StandardError => e
-        puts "An problem occurred with gemini api: #{e.message}"
-      end
-
-      ""
-    end
-
     def self.show_help
       puts <<~HELP
         ast - A powerful command-line tool for Application Security Testing
@@ -465,11 +412,16 @@ module ShieldAst
       HELP
     end
 
-    def self.ascii_banner
-      puts <<~BANNER
-        [>>> SHIELD AST <<<]
-        powered by open source (semgrep + osv-scanner) \n
-      BANNER
+    def self.banner
+      yellow = "\e[33m"
+      reset = "\e[0m"
+      version_string = "Shield AST - v#{ShieldAst::VERSION}"
+      line_length = 42
+
+      puts "#{yellow}┌" + "─" * line_length + "┐#{reset}"
+      puts "#{yellow}│#{reset} #{version_string.ljust(line_length - 1)}#{yellow}│#{reset}"
+      puts "#{yellow}└" + "─" * line_length + "┘#{reset}"
+      puts ""
     end
   end
 end

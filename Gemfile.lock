@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    shield_ast (1.2.2)
+    shield_ast (1.3.0)
       erb (~> 4.0)
       fileutils (~> 1.7)
       gemini-ai (~> 4.3)
@@ -153,9 +153,9 @@ DEPENDENCIES
   json
   prawn
   prawn-table
-  rake (~> 13.0)
-  rspec (~> 3.0)
-  rubocop (~> 1.21)
+  rake
+  rspec
+  rubocop
   shield_ast!
 
 BUNDLED WITH
