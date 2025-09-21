@@ -27,7 +27,7 @@ module ShieldAst
     end
 
     def self.build_command(path)
-      base_cmd = %w[semgrep scan --config p/r2c-ci --config p/secrets --json --disable-version-check]
+      base_cmd = %w[semgrep scan --json --disable-version-check]
 
       EXCLUDE_PATTERNS.each do |pattern|
         base_cmd.push("--exclude", pattern)
