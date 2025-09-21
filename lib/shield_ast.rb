@@ -171,7 +171,7 @@ module ShieldAst
         puts "PDF report generated at: #{REPORT_PDF_FILE}"
       rescue StandardError => e
         puts "Error: Failed to generate PDF: #{e.message}"
-        puts "Error: Backtrace: #{e.backtrace.join("\n")}"
+        puts "Error: Backtrace: #{e.backtrace&.join("\n")}"
       end
     end
 
@@ -413,14 +413,16 @@ module ShieldAst
     end
 
     def self.banner
-      yellow = "\e[33m"
+      gray = "\e[90m"
+      white = "\e[97m"
+      bold = "\e[1m"
       reset = "\e[0m"
-      version_string = "Shield AST - v#{ShieldAst::VERSION}"
-      line_length = 42
 
-      puts "#{yellow}┌" + "─" * line_length + "┐#{reset}"
-      puts "#{yellow}│#{reset} #{version_string.ljust(line_length - 1)}#{yellow}│#{reset}"
-      puts "#{yellow}└" + "─" * line_length + "┘#{reset}"
+      title = "Shield AST v#{ShieldAst::VERSION}"
+      line_char = "─"
+      line_segment = line_char * 10
+
+      puts "#{gray}#{line_segment}┤#{reset} #{bold}#{white}#{title}#{reset} #{gray}├#{line_segment}#{reset}"
       puts ""
     end
   end
