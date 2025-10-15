@@ -26,10 +26,9 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
 
-      - name: Install Semgrep
+      - name: Install Opengrep
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install semgrep
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
 
       - name: Install OSV-Scanner
         run: |
