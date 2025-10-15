@@ -29,6 +29,7 @@ jobs:
       - name: Install Opengrep
         run: |
           curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+          echo "/home/runner/.opengrep/cli/latest" >> $GITHUB_PATH
 
       - name: Install OSV-Scanner
         run: |
