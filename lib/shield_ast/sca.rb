@@ -21,7 +21,7 @@ module ShieldAst
         puts "Executing command: #{cmd}" if ENV["DEBUG"]
 
         output = `#{cmd} 2>&1`
-        exit_code = $?.exitstatus
+        exit_code = $CHILD_STATUS.exitstatus
 
         puts "Exit code: #{exit_code}" if ENV["DEBUG"]
         puts "Output: #{output}" if ENV["DEBUG"]
@@ -49,7 +49,7 @@ module ShieldAst
           puts "OSV Scanner non-result error (exit code: #{exit_code})"
           { "results" => [] }
         end
-      rescue => e
+      rescue StandardError => e
         puts "Error running OSV Scanner: #{e.message}"
         { "results" => [] }
       end
@@ -132,12 +132,11 @@ module ShieldAst
     end
 
     def self.extract_fixed_version(vuln)
-      if vuln["affected"] && vuln["affected"].is_a?(Array)
+      if vuln["affected"].is_a?(Array)
         vuln["affected"].each do |affected|
-          if affected["ranges"] && affected["ranges"].is_a?(Array)
+          if affected["ranges"].is_a?(Array)
             affected["ranges"].each do |range|
-              if range["events"] && range["events"].is_a?(Array)
-                # Look for "fixed" events
+              if range["events"].is_a?(Array)
                 fixed_event = range["events"].find { |event| event["fixed"] }
                 return fixed_event["fixed"] if fixed_event
               end
