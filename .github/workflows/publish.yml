@@ -19,10 +19,10 @@ jobs:
           ruby-version: "3.4" # Use a stable, recent Ruby version
           bundler-cache: true
 
-      - name: Install Semgrep
+      - name: Install Opengrep
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install semgrep
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+          echo "/home/runner/.opengrep/cli/latest" >> $GITHUB_PATH
 
       - name: Install OSV-Scanner
         run: |
