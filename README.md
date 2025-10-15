@@ -1,4 +1,4 @@
-# Shield AST - Application Security Testing CLI
+# Shield AST - Application Security Testing
 
 [![Gem Version](https://badge.fury.io/rb/shield_ast.svg)](https://badge.fury.io/rb/shield_ast)
 [![Build Status](https://github.com/JAugusto42/shield_ast/actions/workflows/main.yml/badge.svg)](https://github.com/JAugusto42/shield_ast/actions)
