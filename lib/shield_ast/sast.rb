@@ -5,7 +5,7 @@ require "json"
 require "open3"
 
 module ShieldAst
-  # Wraps the logic for running SAST scan using Semgrep.
+  # Wraps the logic for running SAST scan using Opengrep.
   class SAST
     EXCLUDE_PATTERNS = %w[**/spec/ **/test/ **/tests/ **/features/ **/__tests__/ **/vendor/
                           **/node_modules/ **/*_spec.rb **/*_test.rb **/*.spec.js **/*.test.js
@@ -18,16 +18,16 @@ module ShieldAst
       if status.success?
         JSON.parse(stdout)
       else
-        warn "Semgrep SAST scan failed! Exit Code: #{status.exitstatus}\nError: #{stderr}"
+        warn "Opengrep SAST scan failed! Exit Code: #{status.exitstatus}\nError: #{stderr}"
         { "results" => [] }
       end
     rescue JSON::ParserError => e
-      warn "Failed to parse Semgrep SAST output: #{e.message}"
+      warn "Failed to parse Opengrep SAST output: #{e.message}"
       { "results" => [] }
     end
 
     def self.build_command(path)
-      base_cmd = %w[semgrep scan --config p/r2c-ci --config p/secrets --json --disable-version-check]
+      base_cmd = %w[opengrep scan --config p/r2c-ci --config p/secrets --json --disable-version-check]
 
       EXCLUDE_PATTERNS.each do |pattern|
         base_cmd.push("--exclude", pattern)

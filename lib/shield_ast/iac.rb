@@ -4,11 +4,11 @@ require "json"
 require "open3"
 
 module ShieldAst
-  # Wraps the logic for running Infrastructure as Code (IaC) scans using Semgrep.
+  # Wraps the logic for running Infrastructure as Code (IaC) scans using Opengrep.
   class IaC
     def self.scan(path)
       cmd = [
-        "semgrep", "scan",
+        "opengrep", "scan",
         "--config", "r/terraform",
         "--config", "r/kubernetes",
         "--config", "r/docker",

@@ -41,9 +41,9 @@ ast [command] [options]
 - **`help`** – Displays this help message.
 
 ### Options
-- **`-s, --sast`** – Run SAST using [Semgrep](https://semgrep.dev).
+- **`-s, --sast`** – Run SAST using [Opengrep](https://www.opengrep.dev/).
 - **`-c, --sca`** – Run SCA using [OSV Scanner](https://osv.dev).
-- **`-i, --iac`** – Run IaC analysis using [Semgrep](https://semgrep.dev) with infrastructure rules.
+- **`-i, --iac`** – Run IaC analysis using [Opengrep](https://www.opengrep.dev/) with infrastructure rules.
 - **`-o, --output`** – Specify the output format (`json`, `sarif`, `console`).
 - **`-h, --help`** – Show this help message.
 - **`--version`** – Show the AST version.
@@ -99,9 +99,9 @@ ast report --output sarif
 ## 🛠 How It Works
 
 AST integrates well-known open-source scanners into a single CLI tool:
-- **SAST** – [Semgrep](https://semgrep.dev) for static code analysis
+- **SAST** – [Opengrep](https://www.opengrep.dev/) for static code analysis
 - **SCA** – [OSV Scanner](https://osv.dev) for dependency vulnerability scanning
-- **IaC** – [Semgrep](https://semgrep.dev) rules for Infrastructure as Code
+- **IaC** – [Opengrep](https://www.opengrep.dev/) rules for Infrastructure as Code
 
 This unified approach streamlines security testing, enabling developers to catch security issues earlier in the development process.
 

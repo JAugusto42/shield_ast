@@ -25,9 +25,9 @@ module ShieldAst
     def self.call(args)
       banner
 
-      unless scanner_exists?("osv-scanner") && scanner_exists?("semgrep")
+      unless scanner_exists?("osv-scanner") && scanner_exists?("opengrep")
         puts "\e[31m[!] ERROR:\e[0m Required tools not found."
-        puts "    Install: \e[33mosv-scanner\e[0m, \e[33msemgrep\e[0m"
+        puts "    Install: \e[33mosv-scanner\e[0m, \e[33mopengrep\e[0m"
         exit 1
       end
 
@@ -395,9 +395,9 @@ module ShieldAst
           report         Generates a report from the last scan in JSON or PDF format.
           help           Shows this help message.
         Options:
-          -s, --sast       Run Static Application Security Testing (SAST) with Semgrep.
+          -s, --sast       Run Static Application Security Testing (SAST) with Opengrep.
           -c, --sca        Run Software Composition Analysis (SCA) with OSV Scanner.
-          -i, --iac        Run Infrastructure as Code (IaC) analysis with Semgrep.
+          -i, --iac        Run Infrastructure as Code (IaC) analysis with Opengrep.
           -o, --output     Specify the output format for report (json or pdf, default: json).
           -h, --help       Show this help message.
           --version        Show the ast version.
