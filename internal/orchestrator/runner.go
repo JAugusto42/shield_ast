@@ -72,7 +72,6 @@ func RunScanners(cacheDir string, cfg Config) error {
 
 	log.Println("[Shield AST] Consolidating scan results...")
 
-	// FIXED: Calling the router instead of hardcoding the JSON output
 	err := reporter.ExportResults(cfg.TargetDir, cfg.OutputPath, sastOutput, scaOutput, iacOutput)
 	if err != nil {
 		log.Printf("[ERROR] Failed to export report: %v", err)

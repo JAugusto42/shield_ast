@@ -22,11 +22,10 @@ type Finding struct {
 	Description string
 }
 
-// StartTUI launches the interactive terminal interface
 func StartTUI(sastData, scaData, iacData []byte) error {
 	var findings []Finding
 
-	// 1. Parse Opengrep (SAST)
+	// Parse Opengrep (SAST)
 	if len(sastData) > 0 {
 		var sast struct {
 			Results []struct {
@@ -76,7 +75,7 @@ func StartTUI(sastData, scaData, iacData []byte) error {
 		}
 	}
 
-	// 2. Parse OSV (SCA)
+	// Parse OSV (SCA)
 	if len(scaData) > 0 {
 		var sca struct {
 			Results []struct {
@@ -112,7 +111,7 @@ func StartTUI(sastData, scaData, iacData []byte) error {
 		}
 	}
 
-	// 3. Parse Trivy (IaC)
+	// Parse Trivy (IaC)
 	if len(iacData) > 0 {
 		var iac struct {
 			Results []struct {
@@ -154,7 +153,6 @@ func StartTUI(sastData, scaData, iacData []byte) error {
 	// Left panel (List)
 	list := tview.NewList().ShowSecondaryText(false)
 
-	// FIX: Explicit high-contrast colors immune to terminal themes
 	list.SetMainTextColor(tcell.ColorWhite).
 		SetSelectedTextColor(tcell.ColorYellow).
 		SetSelectedBackgroundColor(tcell.ColorDarkBlue)

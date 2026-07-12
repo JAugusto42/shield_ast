@@ -26,7 +26,7 @@ func SetupTrivy(cacheDir string) (string, error) {
 
 	finalPath := filepath.Join(cacheDir, targetBinary)
 
-	// [NEW] Cache Verification (Checks for the extracted binary, not the tar.gz)
+	// Verify if the binary is already downloaded and extracted
 	if downloader.IsCached(finalPath) {
 		if os.Getenv("SHIELD_DEBUG") == "true" {
 			log.Printf("[DEBUG] Trivy found in cache: %s", finalPath)

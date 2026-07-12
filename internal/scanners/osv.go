@@ -24,7 +24,7 @@ func SetupOSV(cacheDir string) (string, error) {
 		destPath += ".exe"
 	}
 
-	// [NEW] Cache Verification
+	// Verify if the binary is already downloaded
 	if downloader.IsCached(destPath) {
 		if os.Getenv("SHIELD_DEBUG") == "true" {
 			log.Printf("[DEBUG] OSV-Scanner found in cache: %s", destPath)

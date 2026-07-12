@@ -1,6 +1,6 @@
 # Shield AST 🛡️
 
-A Just-In-Time (JIT) Application Security Testing aggregator built in Go. 
+A Just-In-Time (JIT) Application Security Testing aggregator built in Go.
 
 Shield AST provides a unified, cross-platform CLI to run three major security scanners (Opengrep, OSV-Scanner, and Trivy) without requiring you to install them manually. It automatically downloads the correct binaries for your OS/Architecture, caches them, executes scans in parallel, and presents the results in an interactive terminal interface or a consolidated JSON report.
 
@@ -22,20 +22,41 @@ Shield AST provides a unified, cross-platform CLI to run three major security sc
 
 ## 🛠️ Installation
 
-Ensure you have Go 1.22+ installed. 
+You can install Shield AST by downloading a pre-compiled binary or by building it from source.
+
+### Option A: Pre-compiled Binaries (Recommended)
+
+1. Go to the [Releases page](https://github.com/JAugusto42/shield-ast/releases) and download the latest version for your operating system and architecture.
+2. Extract the downloaded file.
+3. Make the binary executable and move it to your system's PATH:
+
+**Linux / macOS:**
+
+```bash
+chmod +x shield-<os>-<arch>
+sudo mv shield-<os>-<arch> /usr/local/bin/shield
+```
+
+**Windows:**
+Move the `shield-windows-amd64.exe` file to a folder of your choice and add that folder to your system's `PATH` Environment Variable.
+
+### Option B: Build from Source
+
+If you have Go 1.22+ installed, you can clone the repository and build it manually:
 
 ```bash
 git clone [https://github.com/JAugusto42/shield-ast.git](https://github.com/JAugusto42/shield-ast.git)
 cd shield-ast
 go build -o shield cmd/shield/main.go
 
-# (Optional) Move to your bin path
+# Move to your bin path (Linux/macOS)
 sudo mv shield /usr/local/bin/
 ```
 
 ## 💻 Usage
 
 Run the scanner in the current directory with default settings (this will open the Interactive TUI):
+
 ```bash
 ./shield
 ```
@@ -43,6 +64,7 @@ Run the scanner in the current directory with default settings (this will open t
 ### 🎮 Interactive TUI Controls
 
 When running in default mode (`--output=tui`), Shield AST opens a split-screen terminal UI:
+
 - `j` or `↓` : Move down the list of findings.
 - `k` or `↑` : Move up the list of findings.
 - `q` or `ESC` : Quit the application.
@@ -63,16 +85,19 @@ Shield AST supports several flags to customize its behavior:
 **Examples:**
 
 Scan a specific project and save the output to a JSON file for CI/CD integration:
+
 ```bash
 ./shield --path=/var/www/my-project --output=security-audit.json
 ```
 
 Run only SAST and SCA, disabling IaC, and open the interactive TUI:
+
 ```bash
 ./shield --iac=false
 ```
 
 Run with verbose debug logs to see download progress and raw execution details:
+
 ```bash
 ./shield --path=. --debug
 ```
@@ -80,6 +105,7 @@ Run with verbose debug logs to see download progress and raw execution details:
 ## 🏗️ Project Structure
 
 Shield follows the Standard Go Project Layout:
+
 - `cmd/shield/`: Application entrypoint and CLI flag parsing.
 - `internal/downloader/`: Resilient HTTP client with automatic retries, caching, and atomic `.tar.gz` in-memory extraction.
 - `internal/scanners/`: Version mapping and OS/Arch translation logic for third-party binaries.
