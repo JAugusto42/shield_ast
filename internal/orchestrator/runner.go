@@ -71,7 +71,9 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 	}()
 
 	doneSpinner := make(chan bool)
-	if !debug {
+	isCI := os.Getenv("CI") != ""
+
+	if !debug && !isCI {
 		go func() {
 			spinnerChars := []string{"|", "/", "-", "\\"}
 			i := 0
@@ -143,7 +145,7 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 
 	wg.Wait()
 
-	if !debug {
+	if !debug && !isCI {
 		doneSpinner <- true
 	}
 
