@@ -50,7 +50,7 @@ jobs:
 
       - name: Run Shield AST on itself 🛡️
         # Usamos o modo JSON para não travar a esteira com a interface interativa (TUI)
-        run: ./shield scan . --output=shield-report.json
+        run: ./shield scan --path . --output=shield-report.json
 
       - name: Upload Security Report
         uses: actions/upload-artifact@v4
