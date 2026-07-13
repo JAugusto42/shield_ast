@@ -27,8 +27,6 @@ func main() {
 	enableSecrets := scanCmd.Bool("secrets", true, "Enable Secret scanning (TruffleHog)")
 	securityGate := scanCmd.Bool("security-gate", false, "Exit with code 1 if any vulnerabilities are found")
 	failOn := scanCmd.String("fail-on", "", "Comma-separated severities to break the build (e.g. 'CRITICAL,HIGH,ERROR')")
-
-	// Nova flag: Reachability Analysis opt-out
 	disableReachability := scanCmd.Bool("disable-reachability", false, "Do not filter unreachable SCA vulnerabilities (show everything)")
 
 	scanCmd.Usage = func() {

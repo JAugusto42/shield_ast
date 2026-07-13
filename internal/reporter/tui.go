@@ -25,7 +25,6 @@ type Finding struct {
 	Snippet      string
 }
 
-// Alteramos a assinatura para receber o secretsData
 func StartTUI(sastData, scaData, iacData, secretsData []byte) error {
 	var findings []Finding
 	disableReachability := os.Getenv("SHIELD_DISABLE_REACHABILITY") == "true"
@@ -217,7 +216,7 @@ func StartTUI(sastData, scaData, iacData, secretsData []byte) error {
 					Title:        fmt.Sprintf("Exposed %s Credential", s.DetectorName),
 					Description:  desc,
 					Reachability: "",
-					Snippet:      s.Raw, // Mostramos a chave crua no bloco de snippet
+					Snippet:      s.Raw,
 				})
 			}
 		}

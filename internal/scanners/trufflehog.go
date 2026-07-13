@@ -8,12 +8,11 @@ import (
 	"github.com/JAugusto42/shield-ast/internal/downloader"
 )
 
-// SetupTrufflehog resolves the correct binary and downloads it via the downloader module
 func SetupTrufflehog(cacheDir string) (string, error) {
 	// TruffleHog uses "darwin", "linux", "windows" and "amd64", "arm64" natively
 	// It matches the runtime.GOOS and runtime.GOARCH of Go directly in their release tags
 
-	version := "3.95.9" // Pinning to the latest stable version
+	version := "3.95.9"
 	osName := runtime.GOOS
 	arch := runtime.GOARCH
 

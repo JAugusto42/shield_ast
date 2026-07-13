@@ -21,7 +21,7 @@ type Config struct {
 	RunSAST      bool
 	RunSCA       bool
 	RunIaC       bool
-	RunSecrets   bool // <--- New Property
+	RunSecrets   bool
 	SecurityGate bool
 	FailOn       string
 }
@@ -32,7 +32,7 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 	opengrepReady := make(chan string)
 	osvReady := make(chan string)
 	trivyReady := make(chan string)
-	trufflehogReady := make(chan string) // <--- Channel for Secrets Scanner
+	trufflehogReady := make(chan string)
 
 	go func() {
 		if !cfg.RunSAST {
@@ -61,7 +61,6 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 		trivyReady <- binPath
 	}()
 
-	// <--- Setup TruffleHog
 	go func() {
 		if !cfg.RunSecrets {
 			trufflehogReady <- ""
@@ -93,7 +92,7 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 	}
 
 	var wg sync.WaitGroup
-	var sastOutput, scaOutput, iacOutput, secretsOutput []byte // <--- Added secretsOutput
+	var sastOutput, scaOutput, iacOutput, secretsOutput []byte
 
 	wg.Add(1)
 	go func() {
@@ -122,7 +121,6 @@ func RunScanners(cacheDir string, cfg Config) (int, error) {
 		}
 	}()
 
-	// <--- Execute TruffleHog (Secrets)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -259,7 +257,6 @@ func countFindings(sastData, scaData, iacData, secretsData []byte, failOn string
 		}
 	}
 
-	// <--- Count TruffleHog Secrets
 	// All leaked secrets are considered "CRITICAL"
 	if len(secretsData) > 0 && checkSeverity("CRITICAL") {
 		// Since we wrapped JSONL into an Array `[{},{}]`, we can parse it as a generic slice

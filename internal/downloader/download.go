@@ -47,7 +47,7 @@ func DownloadFile(url, destPath string) error {
 }
 
 func tryDownload(url, destPath string) error {
-	// Timeout aumentado para 15 minutos
+	// create client with a timeout to avoid hanging indefinitely
 	client := http.Client{Timeout: 15 * time.Minute}
 
 	resp, err := client.Get(url)
@@ -60,27 +60,27 @@ func tryDownload(url, destPath string) error {
 		return fmt.Errorf("HTTP status %d", resp.StatusCode)
 	}
 
-	// 1. Cria um arquivo temporário exclusivo para o download em andamento
+	// Create a temporary file to download the content
+	// This ensures that if the download is interrupted, we don't leave a half-written file at destPath.
+	// The temporary file will be renamed to destPath only after a successful download.
 	tmpPath := destPath + ".downloading"
 	out, err := os.Create(tmpPath)
 	if err != nil {
 		return err
 	}
 
-	// 2. Copia os bytes da internet para o arquivo temporário
 	_, err = io.Copy(out, resp.Body)
 
-	// Feche o arquivo ANTES de tentar renomear ou deletar
 	out.Close()
 
 	if err != nil {
-		// Se o download falhar no meio (ex: a internet caiu), limpa o lixo
+		// if the download fails, remove the temporary file to avoid leaving a corrupted file
 		os.Remove(tmpPath)
 		return err
 	}
 
-	// 3. Download atômico: Renomeia do temporário para o arquivo oficial
-	// Isso garante que o IsCached() nunca seja enganado por um arquivo pela metade
+	// Atomically rename the temporary file to the final destination path
+	// This ensures that the file at destPath is either the old version or the new version, but never a half-written file.
 	return os.Rename(tmpPath, destPath)
 }
 
@@ -113,41 +113,41 @@ func DownloadAndExtractTarGz(url, destPath, targetBinary string) error {
 		return fmt.Errorf("failed to download: HTTP %d", resp.StatusCode)
 	}
 
-	// Cria o leitor de GZIP
+	// gzip reader to decompress the .tar.gz file
 	gzr, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer gzr.Close()
 
-	// Cria o leitor de TAR
+	// create a tar reader from the gzip reader
 	tr := tar.NewReader(gzr)
 
-	// Itera sobre os arquivos dentro do .tar.gz
+	// interate through the files in the tar archive
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
-			break // Fim do arquivo
+			break // break when we reach the end of the archive
 		}
 		if err != nil {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
 
-		// Verifica se o arquivo atual do loop é o binário que queremos
+		// Verify if the current file is the target binary
 		if header.Typeflag == tar.TypeReg && filepath.Base(header.Name) == targetBinary {
-			// Cria o arquivo de destino com permissão de execução (0755)
+			// Create the destination file with execute permissions (0755)
 			outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
 			if err != nil {
 				return fmt.Errorf("failed to create executable file: %w", err)
 			}
 			defer outFile.Close()
 
-			// Copia o conteúdo do tar para o arquivo físico
+			// Copy the content of the tar to the physical file
 			if _, err := io.Copy(outFile, tr); err != nil {
 				return fmt.Errorf("failed to extract binary: %w", err)
 			}
 
-			// Binário encontrado e extraído com sucesso
+			// all done!
 			return nil
 		}
 	}
