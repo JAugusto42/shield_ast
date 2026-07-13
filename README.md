@@ -36,8 +36,10 @@ You can install Shield AST by downloading a pre-compiled binary or by building i
 
 **Linux / macOS:**
 
+```bash
 chmod +x shield-OS-ARCH
 sudo mv shield-OS-ARCH /usr/local/bin/shield
+```
 
 **Windows:**
 Move the `shield-windows-amd64.exe` file to a folder of your choice and add that folder to your system's `PATH` Environment Variable.
@@ -46,27 +48,37 @@ Move the `shield-windows-amd64.exe` file to a folder of your choice and add that
 
 If you have Go 1.22+ installed, you can clone the repository and build it manually:
 
+```bash
 git clone <https://github.com/JAugusto42/shield-ast.git>
 cd shield-ast
 go build -o shield cmd/shield/main.go
+```
 
 ## Move to your bin path (Linux/macOS)
 
+```bash
 sudo mv shield /usr/local/bin/
+```
 
 ## 💻 Usage
 
 Run the scanner against the current directory using the `scan` subcommand (this will open the Interactive TUI):
 
+```bash
 shield scan .
+```
 
 To see the global help menu:
 
+```bash
 shield
+```
 
 To see specific options for the scan command:
 
+```bash
 shield scan --help
+```
 
 ### 🎮 Interactive TUI Controls
 
@@ -98,19 +110,27 @@ The `scan` subcommand supports several flags to customize its behavior:
 
 Scan a specific project and save the output to a JSON file:
 
+```bash
 shield scan /var/www/my-project --output=security-audit.json
+```
 
 **CI/CD Pipeline Usage (Strict Mode):** Block the pipeline (Exit 1) if *any* vulnerabilities are found, generating a JSON report without launching the interactive TUI:
 
+```bash
 shield scan --security-gate --output=report.json .
+```
 
 **CI/CD Pipeline Usage (Threshold Mode):** Block the pipeline *only* if `CRITICAL` or `HIGH` vulnerabilities are found. Lower severities are logged but won't break the build:
 
+```bash
 shield scan --fail-on="CRITICAL,HIGH" --output=security-audit.json .
+```
 
 Run only SAST and Secrets, disabling SCA and IaC, and open the interactive TUI:
 
+```bash
 shield scan . --sca=false --iac=false
+```
 
 ## 🏗️ Project Structure
 
