@@ -14,6 +14,7 @@ type ShieldReport struct {
 	SAST     json.RawMessage `json:"sast_opengrep,omitempty"`
 	SCA      json.RawMessage `json:"sca_osv,omitempty"`
 	IaC      json.RawMessage `json:"iac_trivy,omitempty"`
+	Secrets  json.RawMessage `json:"secrets_trufflehog,omitempty"` // Novo campo para os segredos
 }
 
 type ReportMetadata struct {
@@ -23,12 +24,12 @@ type ReportMetadata struct {
 }
 
 // GenerateUnifiedJSON builds the struct and writes it to the designated output path
-func GenerateUnifiedJSON(targetDir, outputPath string, sastData, scaData, iacData []byte) error {
+func GenerateUnifiedJSON(targetDir, outputPath string, sastData, scaData, iacData, secretsData []byte) error {
 	report := ShieldReport{
 		Metadata: ReportMetadata{
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			Target:    targetDir,
-			Version:   "1.0.0",
+			Version:   "1.0.0", // Podemos atualizar para 1.2.0 na próxima release!
 		},
 	}
 
@@ -41,6 +42,9 @@ func GenerateUnifiedJSON(targetDir, outputPath string, sastData, scaData, iacDat
 	}
 	if len(iacData) > 0 {
 		report.IaC = iacData
+	}
+	if len(secretsData) > 0 {
+		report.Secrets = secretsData
 	}
 
 	// MarshalIndent formats the JSON with pretty indentation (2 spaces)

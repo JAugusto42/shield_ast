@@ -1,11 +1,14 @@
 package downloader
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -97,4 +100,57 @@ func IsCached(path string) bool {
 	}
 	// Make sure it's a file and not a directory
 	return !info.IsDir()
+}
+
+func DownloadAndExtractTarGz(url, destPath, targetBinary string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to download from %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download: HTTP %d", resp.StatusCode)
+	}
+
+	// Cria o leitor de GZIP
+	gzr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzr.Close()
+
+	// Cria o leitor de TAR
+	tr := tar.NewReader(gzr)
+
+	// Itera sobre os arquivos dentro do .tar.gz
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // Fim do arquivo
+		}
+		if err != nil {
+			return fmt.Errorf("error reading tar archive: %w", err)
+		}
+
+		// Verifica se o arquivo atual do loop é o binário que queremos
+		if header.Typeflag == tar.TypeReg && filepath.Base(header.Name) == targetBinary {
+			// Cria o arquivo de destino com permissão de execução (0755)
+			outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create executable file: %w", err)
+			}
+			defer outFile.Close()
+
+			// Copia o conteúdo do tar para o arquivo físico
+			if _, err := io.Copy(outFile, tr); err != nil {
+				return fmt.Errorf("failed to extract binary: %w", err)
+			}
+
+			// Binário encontrado e extraído com sucesso
+			return nil
+		}
+	}
+
+	return fmt.Errorf("binary '%s' not found in the archive", targetBinary)
 }

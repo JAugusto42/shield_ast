@@ -18,13 +18,18 @@ func main() {
 
 	scanCmd := flag.NewFlagSet("scan", flag.ExitOnError)
 
-	// Define as flags do 'scan'
 	targetPathFlag := scanCmd.String("path", ".", "Target directory to scan (can also be passed as a positional argument)")
 	outputPath := scanCmd.String("output", "tui", "Output format ('tui' or path to a '.json' file)")
 	debugMode := scanCmd.Bool("debug", false, "Enable debug mode for verbose logging")
 	enableSAST := scanCmd.Bool("sast", true, "Enable SAST scanner (Opengrep)")
 	enableSCA := scanCmd.Bool("sca", true, "Enable SCA scanner (OSV-Scanner)")
 	enableIaC := scanCmd.Bool("iac", true, "Enable IaC scanner (Trivy)")
+	enableSecrets := scanCmd.Bool("secrets", true, "Enable Secret scanning (TruffleHog)")
+	securityGate := scanCmd.Bool("security-gate", false, "Exit with code 1 if any vulnerabilities are found")
+	failOn := scanCmd.String("fail-on", "", "Comma-separated severities to break the build (e.g. 'CRITICAL,HIGH,ERROR')")
+
+	// Nova flag: Reachability Analysis opt-out
+	disableReachability := scanCmd.Bool("disable-reachability", false, "Do not filter unreachable SCA vulnerabilities (show everything)")
 
 	scanCmd.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: shield scan [options] [directory]\n\n")
@@ -41,7 +46,7 @@ func main() {
 			targetPath = scanCmd.Arg(0)
 		}
 
-		runScan(targetPath, *outputPath, *debugMode, *enableSAST, *enableSCA, *enableIaC)
+		runScan(targetPath, *outputPath, *debugMode, *enableSAST, *enableSCA, *enableIaC, *enableSecrets, *securityGate, *failOn, *disableReachability)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Error: Unknown subcommand '%s'\n\n", os.Args[1])
@@ -59,13 +64,18 @@ func printGlobalUsage() {
 	fmt.Fprintf(os.Stderr, "Use \"shield <command> -h\" for more information about a command.\n")
 }
 
-func runScan(targetPath, outputPath string, debugMode, enableSAST, enableSCA, enableIaC bool) {
+func runScan(targetPath, outputPath string, debugMode, enableSAST, enableSCA, enableIaC, enableSecrets, securityGate bool, failOn string, disableReachability bool) {
 	if debugMode {
 		os.Setenv("SHIELD_DEBUG", "true")
 		log.Println("[DEBUG] Debug mode enabled via CLI")
 	}
 
-	log.Println("[Shield AST] Starting security aggregator...")
+	if disableReachability {
+		os.Setenv("SHIELD_DISABLE_REACHABILITY", "true")
+		if debugMode {
+			log.Println("[DEBUG] Reachability analysis filter disabled. Showing all vulnerabilities.")
+		}
+	}
 
 	absTargetDir, err := filepath.Abs(targetPath)
 	if err != nil {
@@ -83,17 +93,27 @@ func runScan(targetPath, outputPath string, debugMode, enableSAST, enableSCA, en
 	}
 
 	cfg := orchestrator.Config{
-		TargetDir:  absTargetDir,
-		OutputPath: outputPath,
-		RunSAST:    enableSAST,
-		RunSCA:     enableSCA,
-		RunIaC:     enableIaC,
+		TargetDir:    absTargetDir,
+		OutputPath:   outputPath,
+		RunSAST:      enableSAST,
+		RunSCA:       enableSCA,
+		RunIaC:       enableIaC,
+		RunSecrets:   enableSecrets,
+		SecurityGate: securityGate,
+		FailOn:       failOn,
 	}
 
-	err = orchestrator.RunScanners(cacheDir, cfg)
+	totalFindings, err := orchestrator.RunScanners(cacheDir, cfg)
 	if err != nil {
 		log.Fatalf("[FATAL] Error during scanner execution: %v", err)
 	}
 
-	log.Println("[Shield AST] Scan completed successfully.")
+	isGateActive := securityGate || failOn != ""
+	if isGateActive && totalFindings > 0 {
+		log.Fatalf("🚨 [SECURITY GATE] Pipeline blocked! %d vulnerabilities found matching criteria.", totalFindings)
+	}
+
+	if outputPath != "tui" {
+		log.Println("[Shield AST] Scan completed successfully.")
+	}
 }
