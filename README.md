@@ -55,10 +55,22 @@ sudo mv shield /usr/local/bin/
 
 ## 💻 Usage
 
-Run the scanner in the current directory with default settings (this will open the Interactive TUI):
+Run the scanner against the current directory using the `scan` subcommand (this will open the Interactive TUI):
 
 ```bash
-./shield
+shield scan .
+```
+
+To see the global help menu:
+
+```bash
+shield
+```
+
+To see specific options for the scan command:
+
+```bash
+shield scan --help
 ```
 
 ### 🎮 Interactive TUI Controls
@@ -69,13 +81,13 @@ When running in default mode (`--output=tui`), Shield AST opens a split-screen t
 - `k` or `↑` : Move up the list of findings.
 - `q` or `ESC` : Quit the application.
 
-### ⚙️ CLI Options
+### ⚙️ Scan Options
 
-Shield AST supports several flags to customize its behavior:
+The `scan` subcommand supports several flags to customize its behavior:
 
 | Flag | Default | Description |
 |---|---|---|
-| `--path` | `.` | Target directory to scan. |
+| `--path` | `.` | Target directory to scan (can also be passed as a positional argument). |
 | `--output` | `tui` | Output format. Use `tui` for the interactive UI, or pass a path ending in `.json` (e.g., `report.json`) to export the raw consolidated data. |
 | `--debug` | `false` | Enable verbose logging (downloads, stdout, stderr, cache hits). |
 | `--sast` | `true` | Enable or disable the Opengrep SAST scanner. |
@@ -87,19 +99,19 @@ Shield AST supports several flags to customize its behavior:
 Scan a specific project and save the output to a JSON file for CI/CD integration:
 
 ```bash
-./shield --path=/var/www/my-project --output=security-audit.json
+shield scan /var/www/my-project --output=security-audit.json
 ```
 
 Run only SAST and SCA, disabling IaC, and open the interactive TUI:
 
 ```bash
-./shield --iac=false
+shield scan . --iac=false
 ```
 
 Run with verbose debug logs to see download progress and raw execution details:
 
 ```bash
-./shield --path=. --debug
+shield scan . --debug
 ```
 
 ## 🏗️ Project Structure
