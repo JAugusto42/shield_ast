@@ -17,7 +17,6 @@ Shield AST provides a unified, cross-platform CLI to run four major security sca
 ## 🧰 Engines Included
 
 | Type | Engine | Focus |
-
 |---|---|---|
 | **SAST** | [Opengrep](https://github.com/opengrep/opengrep) | Static code analysis and custom rules (Community-driven Semgrep fork). |
 | **SCA** | [OSV-Scanner](https://google.github.io/osv-scanner/) | Open Source Vulnerability scanner with Call Graph analysis (Reachability). |
@@ -93,7 +92,6 @@ When running in default mode (`--output=tui`), Shield AST opens a split-screen t
 The `scan` subcommand supports several flags to customize its behavior:
 
 | Flag | Default | Description |
-
 |---|---|---|
 | `--path` | `.` | Target directory to scan (can also be passed as a positional argument). |
 | `--output` | `tui` | Output format. Use `tui` for the interactive UI, or pass a path ending in `.json` (e.g., `report.json`) to export the raw consolidated data. |
